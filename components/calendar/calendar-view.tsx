@@ -426,7 +426,7 @@ export function CalendarView() {
                       )}
                     >
                       <span className={cn(
-                        "text-sm font-medium leading-none",
+                        "text-sm font-medium leading-none -translate-y-0.5",
                         isToday && hasWorkout && "text-success font-bold",
                         isToday && !hasWorkout && "text-primary font-bold",
                         !isToday && hasWorkout && "text-success",
@@ -440,7 +440,7 @@ export function CalendarView() {
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
                           transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                          className="absolute -bottom-0.5"
+                          className="absolute bottom-0.5"
                         >
                           <Check className="w-3 h-3 text-success" />
                         </motion.div>
@@ -449,7 +449,7 @@ export function CalendarView() {
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
-                          className="absolute -bottom-0.5"
+                          className="absolute bottom-0.5"
                         >
                           <X className="w-3 h-3 text-muted-foreground" />
                         </motion.div>
@@ -458,7 +458,7 @@ export function CalendarView() {
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
-                          className="absolute -bottom-0.5"
+                          className="absolute bottom-0.5"
                         >
                           <Dumbbell className="w-2.5 h-2.5 text-primary/60" />
                         </motion.div>
@@ -467,7 +467,7 @@ export function CalendarView() {
                         <motion.div 
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
-                          className="absolute -bottom-0.5 w-1.5 h-1.5 rounded-full bg-primary" 
+                          className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full bg-primary" 
                         />
                       )}
                     </motion.button>
