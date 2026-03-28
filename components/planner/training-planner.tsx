@@ -910,25 +910,26 @@ export function TrainingPlanner() {
       {activePlan && (
         <Card className="bg-gradient-to-r from-primary/10 to-transparent border-primary/20 overflow-hidden">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <motion.div 
                   whileHover={{ rotate: 15 }}
-                  className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center"
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0"
                 >
-                  <Calendar className="w-6 h-6 text-primary" />
+                  <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 </motion.div>
-                <div>
-                  <h3 className="font-semibold text-lg">{activePlan.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {activePlan.days.filter(d => !d.isRest).length} training days &middot; {activePlan.days.filter(d => d.isRest).length} rest days
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-base sm:text-lg truncate">{activePlan.name}</h3>
+                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs sm:text-sm text-muted-foreground">
+                    <span>{activePlan.days.filter(d => !d.isRest).length} training</span>
+                    <span>&middot; {activePlan.days.filter(d => d.isRest).length} rest</span>
                     {activePlan.durationWeeks > 0 && (
-                      <> &middot; {activePlan.durationWeeks} weeks</>
+                      <span>&middot; {activePlan.durationWeeks}w</span>
                     )}
                     {activePlan.startDate && (
-                      <> &middot; starts {format(new Date(activePlan.startDate), 'MMM d, yyyy')}</>
+                      <span>&middot; {format(new Date(activePlan.startDate), 'MMM d')}</span>
                     )}
-                  </p>
+                  </div>
                   {activePlan.durationWeeks > 0 && activePlan.startDate && (() => {
                     const elapsed = (Date.now() - new Date(activePlan.startDate!).getTime()) / (7 * 24 * 60 * 60 * 1000)
                     const currentWeek = Math.min(Math.max(1, Math.ceil(elapsed)), activePlan.durationWeeks)
@@ -944,7 +945,7 @@ export function TrainingPlanner() {
                   })()}
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 self-end sm:self-center">
                 <Button
                   variant="ghost"
                   size="icon"

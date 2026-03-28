@@ -168,33 +168,33 @@ export function CalendarView() {
             ? "bg-gradient-to-r from-success/20 to-success/5 border-success/30" 
             : "bg-gradient-to-r from-primary/10 to-transparent border-primary/20"
         )}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
                 <motion.div 
                   animate={didGoToGymToday ? { 
                     scale: [1, 1.1, 1],
                   } : {}}
                   transition={{ duration: 0.5, repeat: didGoToGymToday ? Infinity : 0, repeatDelay: 2 }}
                   className={cn(
-                    "w-16 h-16 rounded-2xl flex items-center justify-center transition-all",
+                    "w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center transition-all shrink-0",
                     didGoToGymToday 
                       ? "bg-success/30 shadow-lg shadow-success/20" 
                       : "bg-primary/20"
                   )}
                 >
                   {didGoToGymToday ? (
-                    <Check className="w-8 h-8 text-success" />
+                    <Check className="w-6 h-6 sm:w-8 sm:h-8 text-success" />
                   ) : (
-                    <Dumbbell className="w-8 h-8 text-primary" />
+                    <Dumbbell className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
                   )}
                 </motion.div>
                 <div>
-                  <h3 className="text-xl font-bold">
-                    {didGoToGymToday ? "You crushed it today!" : "Did you hit the gym today?"}
+                  <h3 className="text-base sm:text-xl font-bold">
+                    {didGoToGymToday ? "You crushed it today!" : "Did you hit the gym?"}
                   </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {format(today, 'EEEE, MMMM d, yyyy')}
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    {format(today, 'EEEE, MMM d')}
                   </p>
                   {didGoToGymToday && (
                     <motion.p 
@@ -208,15 +208,15 @@ export function CalendarView() {
                   )}
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-3 self-end sm:self-center sm:flex-col sm:items-end sm:gap-2">
+                <span className="text-xs text-muted-foreground order-2 sm:order-none">
+                  {didGoToGymToday ? 'Logged' : 'Not logged'}
+                </span>
                 <Switch
                   checked={didGoToGymToday}
                   onCheckedChange={() => toggleCheckIn(todayString)}
                   className="scale-125"
                 />
-                <span className="text-xs text-muted-foreground">
-                  {didGoToGymToday ? 'Logged' : 'Not logged'}
-                </span>
               </div>
             </div>
           </CardContent>
@@ -296,14 +296,14 @@ export function CalendarView() {
       {activePlan && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="bg-gradient-to-r from-primary/10 to-transparent border-primary/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                    <Dumbbell className="w-5 h-5 text-primary" />
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                    <Dumbbell className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                   </div>
-                  <div>
-                    <p className="font-semibold">{activePlan.name}</p>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm sm:text-base truncate">{activePlan.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {activePlan.days.filter(d => !d.isRest).length} gym days/week
                       {activePlan.durationWeeks > 0 && activePlan.startDate && (() => {
@@ -318,7 +318,7 @@ export function CalendarView() {
                   </div>
                 </div>
                 {activePlan.durationWeeks > 0 && activePlan.startDate && (
-                  <div className="w-32">
+                  <div className="w-full sm:w-32">
                     <div className="h-2 bg-secondary rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
@@ -340,11 +340,11 @@ export function CalendarView() {
       {/* Calendar */}
       <Card className="overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gradient-to-r from-primary/5 to-transparent">
-          <div className="flex items-center gap-3">
-            <CardTitle className="text-xl font-bold">
-              {format(currentMonth, 'MMMM yyyy')}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <CardTitle className="text-lg sm:text-xl font-bold">
+              {format(currentMonth, 'MMM yyyy')}
             </CardTitle>
-            <div className="flex items-center gap-1 text-muted-foreground">
+            <div className="hidden sm:flex items-center gap-1 text-muted-foreground">
               <MotivationIcon className="w-4 h-4 text-primary" />
               <span className="text-xs">{motivation.text}</span>
             </div>
@@ -477,7 +477,7 @@ export function CalendarView() {
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap items-center justify-center gap-6 mt-6 pt-4 border-t border-border">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-6 mt-6 pt-4 border-t border-border">
             <div className="flex items-center gap-2 text-sm">
               <div className="w-7 h-7 rounded-full bg-success/25 flex items-center justify-center">
                 <Check className="w-3.5 h-3.5 text-success" />
