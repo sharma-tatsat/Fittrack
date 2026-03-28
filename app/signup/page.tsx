@@ -60,8 +60,9 @@ export default function SignupPage() {
         router.push('/')
         router.refresh()
       }
-    } catch {
-      toast.error('Something went wrong. Please try again.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Network error - check console')
+      console.error('Signup client error:', err)
     } finally {
       setLoading(false)
     }

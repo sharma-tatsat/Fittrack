@@ -59,10 +59,12 @@ export async function POST(request: Request) {
       { message: 'Account created successfully' },
       { status: 201 }
     )
-  } catch (error) {
-    console.error('Signup error:', error)
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error)
+    const errStack = error instanceof Error ? error.stack : undefined
+    console.error('Signup error:', { message: errMsg, stack: errStack, name: error instanceof Error ? error.name : 'Unknown' })
     return NextResponse.json(
-      { error: 'Something went wrong. Please try again.' },
+      { error: `Signup failed: ${errMsg}` },
       { status: 500 }
     )
   }
