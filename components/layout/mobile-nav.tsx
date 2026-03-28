@@ -5,6 +5,7 @@ import {
   LayoutDashboard, 
   Dumbbell, 
   Timer, 
+  ListChecks,
   CalendarDays, 
   User 
 } from 'lucide-react'
@@ -15,6 +16,7 @@ const navItems = [
   { id: 'dashboard', label: 'Home', icon: LayoutDashboard, color: 'text-blue-500' },
   { id: 'exercises', label: 'Exercises', icon: Dumbbell, color: 'text-emerald-500' },
   { id: 'tracker', label: 'Workout', icon: Timer, color: 'text-amber-500' },
+  { id: 'planner', label: 'Plan', icon: ListChecks, color: 'text-violet-500' },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays, color: 'text-rose-500' },
   { id: 'profile', label: 'Profile', icon: User, color: 'text-cyan-500' },
 ]
@@ -33,7 +35,7 @@ export function MobileNav() {
               onClick={() => setActiveTab(item.id)}
               whileTap={{ scale: 0.9 }}
               className={cn(
-                "relative flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all duration-200 min-w-[60px]",
+                "relative flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 min-w-[50px]",
                 isActive ? "text-primary" : "text-muted-foreground"
               )}
             >
