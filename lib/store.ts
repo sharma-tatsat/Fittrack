@@ -420,16 +420,62 @@ export const useFitnessStore = create<FitnessStore>()(
             completed: c.completed as boolean,
           }))
 
+          // Preserve local plans if server returns empty (e.g. save failed earlier)
+          const localPlans = get().trainingPlans
+          const localActiveId = get().activeTrainingPlanId
+          const hasServerPlans = mappedPlans.length > 0
+
           set({
             isLoaded: true,
             user: { name: user.name || 'Athlete', email: user.email || '' },
-            exercises: mappedExercises,
+            exercises: mappedExercises.length > 0 ? mappedExercises : get().exercises,
             workoutLogs: mappedLogs,
             personalRecords: mappedPRs,
-            trainingPlans: mappedPlans,
-            activeTrainingPlanId: activePlan ? (activePlan as DbPlan).id : null,
-            checkIns: mappedCheckIns,
+            trainingPlans: hasServerPlans ? mappedPlans : localPlans,
+            activeTrainingPlanId: hasServerPlans
+              ? (activePlan ? (activePlan as DbPlan).id : null)
+              : localActiveId,
+            checkIns: mappedCheckIns.length > 0 ? mappedCheckIns : get().checkIns,
           })
+
+          // Re-save local-only plans to server
+          if (!hasServerPlans && localPlans.length > 0) {
+            for (const plan of localPlans) {
+              if (plan.id.startsWith('plan-')) {
+                fetch('/api/training-plans', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    name: plan.name,
+                    durationWeeks: plan.durationWeeks,
+                    startDate: plan.startDate,
+                    days: plan.days.map(d => ({
+                      day: d.day,
+                      isRest: d.isRest ?? false,
+                      exercises: d.exercises,
+                    })),
+                  }),
+                })
+                  .then(r => r.ok ? r.json() : null)
+                  .then(saved => {
+                    if (saved) {
+                      set(state => ({
+                        trainingPlans: state.trainingPlans.map(p =>
+                          p.id === plan.id ? { ...p, id: saved.id } : p
+                        ),
+                        activeTrainingPlanId: state.activeTrainingPlanId === plan.id ? saved.id : state.activeTrainingPlanId,
+                      }))
+                      fetch(`/api/training-plans/${saved.id}/activate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: '{}',
+                      }).catch(() => {})
+                    }
+                  })
+                  .catch(() => {})
+              }
+            }
+          }
         } catch {
           // If server is unreachable, keep whatever's in localStorage
           set({ isLoaded: true })
@@ -441,9 +487,11 @@ export const useFitnessStore = create<FitnessStore>()(
       partialize: (state) => ({
         activeTab: state.activeTab,
         weightUnit: state.weightUnit,
-        // Persist plan data as fallback until server sync completes
+        // Persist plan + exercise data as fallback until server sync completes
         trainingPlans: state.trainingPlans,
         activeTrainingPlanId: state.activeTrainingPlanId,
+        exercises: state.exercises,
+        checkIns: state.checkIns,
       }),
     }
   )

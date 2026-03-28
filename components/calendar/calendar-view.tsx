@@ -392,13 +392,13 @@ export function CalendarView() {
                         toggleCheckIn(format(day, 'yyyy-MM-dd'))
                       }}
                       className={cn(
-                        "relative w-9 h-9 rounded-full flex items-center justify-center transition-all",
+                        "relative w-10 h-10 rounded-full flex items-center justify-center transition-all",
                         !isCurrentMonth && "opacity-25",
                         isToday && "ring-2 ring-primary ring-offset-2 ring-offset-background",
                         hasWorkout 
                           ? "bg-success/25 shadow-sm shadow-success/20" 
                           : isPlanned
-                            ? "bg-primary/10 border border-dashed border-primary/30"
+                            ? "bg-primary/15 border-2 border-primary/40"
                             : "hover:bg-secondary/50"
                       )}
                     >
@@ -445,25 +445,25 @@ export function CalendarView() {
           {/* Legend */}
           <div className="flex flex-wrap items-center justify-center gap-6 mt-6 pt-4 border-t border-border">
             <div className="flex items-center gap-2 text-sm">
-              <div className="w-6 h-6 rounded-full bg-success/25 flex items-center justify-center">
-                <Check className="w-3 h-3 text-success" />
+              <div className="w-7 h-7 rounded-full bg-success/25 flex items-center justify-center">
+                <Check className="w-3.5 h-3.5 text-success" />
               </div>
               <span className="text-muted-foreground">Logged</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <div className="w-6 h-6 rounded-full bg-primary/10 border border-dashed border-primary/30 flex items-center justify-center">
-                <Dumbbell className="w-2.5 h-2.5 text-primary/60" />
+              <div className="w-7 h-7 rounded-full bg-primary/15 border-2 border-primary/40 flex items-center justify-center">
+                <Dumbbell className="w-3 h-3 text-primary/60" />
               </div>
               <span className="text-muted-foreground">Planned</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center">
+              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary" />
               </div>
               <span className="text-muted-foreground">Workout</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <div className="w-6 h-6 rounded-full ring-2 ring-primary flex items-center justify-center">
+              <div className="w-7 h-7 rounded-full ring-2 ring-primary flex items-center justify-center">
                 <span className="text-xs font-bold text-primary">{format(today, 'd')}</span>
               </div>
               <span className="text-muted-foreground">Today</span>

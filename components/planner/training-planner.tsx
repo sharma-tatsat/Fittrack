@@ -36,7 +36,6 @@ import {
   Edit3,
   AlertTriangle,
   Check,
-  Copy,
   Timer
 } from 'lucide-react'
 import { useFitnessStore, type Exercise } from '@/lib/store'
@@ -185,6 +184,35 @@ const dayConfig: Record<string, { icon: typeof Sun; color: string }> = {
   Sunday: { icon: Coffee, color: 'text-cyan-500' },
 }
 
+// ─── Split presets: split label → exercise names ───────────────────
+const SPLIT_PRESETS: Record<string, string[]> = {
+  Push: ['Bench Press', 'Incline Press', 'Cable Fly', 'Overhead Press', 'Lateral Raises', 'Tricep Pushdowns'],
+  Pull: ['Pull Ups', 'Barbell Rows', 'Lat Pulldown', 'Cable Rows', 'Bicep Curls', 'Hammer Curls'],
+  Legs: ['Squats', 'Leg Press', 'Lunges', 'Leg Extensions', 'Leg Curls', 'Calf Raises'],
+  Upper: ['Bench Press', 'Barbell Rows', 'Overhead Press', 'Lat Pulldown', 'Bicep Curls', 'Tricep Pushdowns'],
+  Lower: ['Squats', 'Deadlift', 'Leg Press', 'Leg Curls', 'Calf Raises'],
+  Chest: ['Bench Press', 'Incline Press', 'Cable Fly', 'Dumbbell Fly', 'Push Ups'],
+  Back: ['Pull Ups', 'Barbell Rows', 'Lat Pulldown', 'Cable Rows', 'Deadlift'],
+  Shoulders: ['Overhead Press', 'Lateral Raises', 'Front Raises', 'Rear Delt Fly'],
+  Arms: ['Bicep Curls', 'Hammer Curls', 'Tricep Pushdowns', 'Tricep Dips', 'Skull Crushers'],
+  Core: ['Crunches', 'Planks', 'Leg Raises', 'Russian Twists', 'Mountain Climbers'],
+  'Full Body': ['Squats', 'Bench Press', 'Barbell Rows', 'Overhead Press', 'Bicep Curls', 'Planks'],
+  'Chest / Back': ['Bench Press', 'Incline Press', 'Dumbbell Fly', 'Pull Ups', 'Barbell Rows', 'Cable Rows'],
+  'Shoulders / Arms': ['Overhead Press', 'Lateral Raises', 'Rear Delt Fly', 'Bicep Curls', 'Hammer Curls', 'Tricep Pushdowns', 'Skull Crushers'],
+}
+
+const SPLIT_OPTIONS = Object.keys(SPLIT_PRESETS)
+
+// Map each template to the split labels its training days use
+const TEMPLATE_SPLITS: Record<string, string[]> = {
+  ppl: ['Push', 'Pull', 'Legs'],
+  'upper-lower': ['Upper', 'Lower'],
+  'bro-split': ['Chest', 'Back', 'Shoulders', 'Legs', 'Arms'],
+  'full-body': ['Full Body'],
+  arnold: ['Chest / Back', 'Shoulders / Arms', 'Legs'],
+  phat: ['Upper', 'Lower'],
+}
+
 function SortableExerciseItem({ 
   exercise, 
   onRemove 
@@ -290,6 +318,7 @@ export function TrainingPlanner() {
   const [planWeeks, setPlanWeeks] = useState(0)
   const [durationMode, setDurationMode] = useState<'ongoing' | 'weeks' | 'months' | 'years'>('ongoing')
   const [durationValue, setDurationValue] = useState('')
+  const [isCustomDuration, setIsCustomDuration] = useState(false)
   const [isEditingDuration, setIsEditingDuration] = useState(false)
   const [addExerciseDialog, setAddExerciseDialog] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -297,7 +326,6 @@ export function TrainingPlanner() {
   const [isEditingSchedule, setIsEditingSchedule] = useState(false)
   const [confirmDeletePlan, setConfirmDeletePlan] = useState(false)
   const [confirmRestDay, setConfirmRestDay] = useState<string | null>(null)
-  const [copyToDay, setCopyToDay] = useState<string | null>(null)
 
   const activePlan = trainingPlans.find(p => p.id === activeTrainingPlanId)
 
@@ -397,15 +425,27 @@ export function TrainingPlanner() {
     const weeks = computeWeeks(durationMode, durationValue)
 
     if (selectedTemplateObj) {
-      const resolvedDays = selectedTemplateObj.days.map(td => ({
-        day: td.day,
-        isRest: restDays.has(td.day),
-        exercises: restDays.has(td.day)
-          ? []
-          : td.exerciseNames
-              .map(eName => exercises.find(e => e.name === eName)?.id)
-              .filter((id): id is string => !!id),
-      }))
+      // Collect exercise slots from template's training days (days that have exercises)
+      const templateTrainingDays = selectedTemplateObj.days.filter(td => td.exerciseNames.length > 0)
+      const exerciseSlots = templateTrainingDays.map(td =>
+        td.exerciseNames
+          .map(eName => exercises.find(e => e.name === eName)?.id)
+          .filter((id): id is string => !!id)
+      )
+
+      // User's selected training days (non-rest) in DAYS order
+      const userTrainingDays = DAYS.filter(d => !restDays.has(d))
+
+      // Redistribute exercise slots to user's training days in order
+      const resolvedDays = DAYS.map(day => {
+        if (restDays.has(day)) {
+          return { day, isRest: true, exercises: [] as string[] }
+        }
+        const slotIndex = userTrainingDays.indexOf(day)
+        const exercises = slotIndex < exerciseSlots.length ? exerciseSlots[slotIndex] : []
+        return { day, isRest: false, exercises }
+      })
+
       addTrainingPlan({
         name,
         durationWeeks: weeks,
@@ -426,6 +466,7 @@ export function TrainingPlanner() {
     setRestDays(new Set(['Saturday', 'Sunday']))
     setDurationMode('ongoing')
     setDurationValue('')
+    setIsCustomDuration(false)
     setPlanWeeks(0)
     setIsAddingPlan(false)
   }
@@ -437,38 +478,63 @@ export function TrainingPlanner() {
 
     const isBecomingRest = !dayPlan.isRest
 
-    if (isBecomingRest) {
-      // Collect exercises from current training days in order
-      const currentTrainingDays = DAYS.filter(d => {
-        const dp = activePlan.days.find(p => p.day === d)
-        return dp && !dp.isRest && dp.exercises.length > 0
-      })
-      const exerciseSlots = currentTrainingDays.map(d => activePlan.days.find(p => p.day === d)!.exercises)
+    // Collect exercise arrays from ALL current training days in DAYS order
+    const currentTrainingDays = DAYS.filter(d => {
+      const dp = activePlan.days.find(p => p.day === d)
+      return dp && !dp.isRest && dp.exercises.length > 0
+    })
+    const exerciseSlots = currentTrainingDays.map(d => activePlan.days.find(p => p.day === d)!.exercises)
 
-      // New training days = current training days minus the one becoming rest
+    if (isBecomingRest) {
+      // Start with existing training days minus the one becoming rest
       const newTrainingDays = DAYS.filter(d => {
         if (d === day) return false
         const dp = activePlan.days.find(p => p.day === d)
         return dp && !dp.isRest
       })
 
+      // Auto-promote rest days to absorb overflowing exercise slots
+      const availableRestDays = DAYS.filter(d => {
+        if (d === day) return false
+        return !newTrainingDays.includes(d)
+      })
+
+      while (newTrainingDays.length < exerciseSlots.length && availableRestDays.length > 0) {
+        const lastTraining = newTrainingDays[newTrainingDays.length - 1]
+        const lastIdx = DAYS.indexOf(lastTraining)
+        let promoted: string | null = null
+        for (let i = 1; i <= 7; i++) {
+          const candidate = DAYS[(lastIdx + i) % 7]
+          const avIdx = availableRestDays.indexOf(candidate)
+          if (avIdx !== -1) {
+            promoted = candidate
+            availableRestDays.splice(avIdx, 1)
+            break
+          }
+        }
+        if (promoted) {
+          newTrainingDays.push(promoted)
+          newTrainingDays.sort((a, b) => DAYS.indexOf(a) - DAYS.indexOf(b))
+        } else {
+          break
+        }
+      }
+
       updateTrainingPlan(activePlan.id, {
         days: activePlan.days.map(d => {
           if (d.day === day) return { ...d, exercises: [], isRest: true }
-          if (d.isRest) return d
           const slotIndex = newTrainingDays.indexOf(d.day)
-          const exercises = slotIndex < exerciseSlots.length ? exerciseSlots[slotIndex] : []
-          return { ...d, exercises, isRest: false }
+          if (slotIndex !== -1 && slotIndex < exerciseSlots.length) {
+            return { ...d, exercises: exerciseSlots[slotIndex], isRest: false }
+          }
+          if (slotIndex !== -1) {
+            return { ...d, exercises: [], isRest: false }
+          }
+          return d
         }),
       })
     } else {
       // Becoming training day — redistribute with the new day included
-      const currentTrainingDays = DAYS.filter(d => {
-        const dp = activePlan.days.find(p => p.day === d)
-        return dp && !dp.isRest && dp.exercises.length > 0
-      })
-      const exerciseSlots = currentTrainingDays.map(d => activePlan.days.find(p => p.day === d)!.exercises)
-
       const newTrainingDays = DAYS.filter(d => {
         if (d === day) return true
         const dp = activePlan.days.find(p => p.day === d)
@@ -516,23 +582,19 @@ export function TrainingPlanner() {
     setIsEditingSchedule(false)
   }
 
-  const handleCopyExercises = (targetDay: string, sourceDay: string) => {
+  const handleChangeSplit = (day: string, splitLabel: string) => {
     if (!activePlan) return
-    const source = activePlan.days.find(d => d.day === sourceDay)
-    if (!source || source.exercises.length === 0) return
-
+    const presetNames = SPLIT_PRESETS[splitLabel]
+    if (!presetNames) return
+    const resolvedIds = presetNames
+      .map(name => exercises.find(e => e.name === name)?.id)
+      .filter((id): id is string => !!id)
     updateTrainingPlan(activePlan.id, {
       days: activePlan.days.map(d =>
-        d.day === targetDay
-          ? { ...d, exercises: [...d.exercises, ...source.exercises.filter(id => !d.exercises.includes(id))], isRest: false }
-          : d
+        d.day === day ? { ...d, exercises: resolvedIds, isRest: false } : d
       ),
     })
-    setCopyToDay(null)
   }
-
-  // Days that have exercises (for the copy-from picker)
-  const daysWithExercises = activePlan?.days.filter(d => d.exercises.length > 0) ?? []
 
   const handleSaveDurationEdit = () => {
     if (!activePlan) return
@@ -571,6 +633,29 @@ export function TrainingPlanner() {
     return [...groups].map(g => (g as string).charAt(0).toUpperCase() + (g as string).slice(1)).join(' / ')
   }
 
+  // Compute which split options to show based on what's in the plan
+  const planSplitOptions = (() => {
+    if (!activePlan) return SPLIT_OPTIONS
+    // Collect all distinct split labels currently in the plan
+    const labels = new Set<string>()
+    for (const d of activePlan.days) {
+      if (!d.isRest && d.exercises.length > 0) {
+        const label = getSplitLabel(d.exercises)
+        if (label) labels.add(label)
+      }
+    }
+    // Check if these labels match a known template's split set
+    for (const [, templateSplits] of Object.entries(TEMPLATE_SPLITS)) {
+      const tSet = new Set(templateSplits)
+      if (labels.size > 0 && [...labels].every(l => tSet.has(l))) {
+        return templateSplits
+      }
+    }
+    // Fallback: show all unique labels from the plan + rest of SPLIT_OPTIONS
+    if (labels.size > 0) return [...labels]
+    return SPLIT_OPTIONS
+  })()
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -598,7 +683,7 @@ export function TrainingPlanner() {
               ))}
             </SelectContent>
           </Select>
-          <Dialog open={isAddingPlan} onOpenChange={(open) => { setIsAddingPlan(open); if (!open) { setSelectedTemplate(null); setNewPlanName(''); setRestDays(new Set(['Saturday', 'Sunday'])); setPlanWeeks(0); setDurationMode('ongoing'); setDurationValue(''); } }}>
+          <Dialog open={isAddingPlan} onOpenChange={(open) => { setIsAddingPlan(open); if (!open) { setSelectedTemplate(null); setNewPlanName(''); setRestDays(new Set(['Saturday', 'Sunday'])); setPlanWeeks(0); setDurationMode('ongoing'); setDurationValue(''); setIsCustomDuration(false); } }}>
             <DialogTrigger asChild>
               <Button size="icon" variant="outline" className="shrink-0">
                 <Plus className="w-4 h-4" />
@@ -689,56 +774,76 @@ export function TrainingPlanner() {
                 {/* Duration picker */}
                 <div>
                   <p className="text-sm font-medium mb-2">Duration</p>
-                  <div className="flex gap-1 mb-2">
-                    {(['ongoing', 'weeks', 'months', 'years'] as const).map(mode => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => { setDurationMode(mode); setDurationValue('') }}
-                        className={cn(
-                          "flex-1 rounded-lg py-1.5 text-xs font-medium transition-all border capitalize",
-                          durationMode === mode
-                            ? "bg-primary/10 text-primary border-primary/30"
-                            : "bg-secondary/50 text-muted-foreground border-transparent hover:border-border"
-                        )}
-                      >
-                        {mode}
-                      </button>
-                    ))}
-                  </div>
-                  {durationMode !== 'ongoing' && (
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap gap-1">
-                        {durationPresets[durationMode].map(v => (
-                          <button
-                            key={v}
-                            type="button"
-                            onClick={() => setDurationValue(String(v))}
-                            className={cn(
-                              "rounded-lg px-3 py-1.5 text-xs font-medium transition-all border",
-                              durationValue === String(v)
-                                ? "bg-primary/10 text-primary border-primary/30"
-                                : "bg-secondary/50 text-muted-foreground border-transparent hover:border-border"
-                            )}
-                          >
-                            {v}
-                          </button>
-                        ))}
-                      </div>
-                      <Input
-                        type="number"
-                        placeholder={`Custom (max ${durationMax[durationMode]})`}
-                        value={durationValue}
-                        onChange={(e) => {
-                          const v = parseInt(e.target.value) || 0
-                          setDurationValue(v > durationMax[durationMode] ? String(durationMax[durationMode]) : e.target.value)
+                  <div className="flex gap-2">
+                    <Select
+                      value={durationMode}
+                      onValueChange={(val: 'ongoing' | 'weeks' | 'months' | 'years') => {
+                        setDurationMode(val)
+                        setDurationValue('')
+                        setIsCustomDuration(false)
+                      }}
+                    >
+                      <SelectTrigger className="bg-secondary/50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ongoing">Ongoing</SelectItem>
+                        <SelectItem value="weeks">Weeks</SelectItem>
+                        <SelectItem value="months">Months</SelectItem>
+                        <SelectItem value="years">Years</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {durationMode !== 'ongoing' && !isCustomDuration && (
+                      <Select
+                        value={durationValue || ''}
+                        onValueChange={(val) => {
+                          if (val === 'custom') {
+                            setIsCustomDuration(true)
+                            setDurationValue('')
+                          } else {
+                            setDurationValue(val)
+                          }
                         }}
-                        min={1}
-                        max={durationMax[durationMode]}
-                        className="bg-secondary/50 text-sm"
-                      />
-                    </div>
-                  )}
+                      >
+                        <SelectTrigger className="bg-secondary/50">
+                          <SelectValue placeholder={`Select ${durationMode}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {durationPresets[durationMode].map(v => (
+                            <SelectItem key={v} value={String(v)}>
+                              {v} {durationMode}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="custom">Custom...</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {durationMode !== 'ongoing' && isCustomDuration && (
+                      <div className="flex gap-2 flex-1">
+                        <Input
+                          type="number"
+                          placeholder={`Max ${durationMax[durationMode]}`}
+                          value={durationValue}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value) || 0
+                            setDurationValue(v > durationMax[durationMode] ? String(durationMax[durationMode]) : e.target.value)
+                          }}
+                          min={1}
+                          max={durationMax[durationMode]}
+                          className="bg-secondary/50 text-sm"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => { setIsCustomDuration(false); setDurationValue('') }}
+                          className="shrink-0 text-xs"
+                        >
+                          Presets
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <Button onClick={handleCreatePlan} className="w-full gap-2">
@@ -934,7 +1039,7 @@ export function TrainingPlanner() {
       </Dialog>
 
       {/* Edit Duration Dialog */}
-      <Dialog open={isEditingDuration} onOpenChange={setIsEditingDuration}>
+      <Dialog open={isEditingDuration} onOpenChange={(open) => { setIsEditingDuration(open); if (!open) setIsCustomDuration(false); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -946,56 +1051,76 @@ export function TrainingPlanner() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
-            <div className="flex gap-1">
-              {(['ongoing', 'weeks', 'months', 'years'] as const).map(mode => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => { setDurationMode(mode); setDurationValue('') }}
-                  className={cn(
-                    "flex-1 rounded-lg py-1.5 text-xs font-medium transition-all border capitalize",
-                    durationMode === mode
-                      ? "bg-primary/10 text-primary border-primary/30"
-                      : "bg-secondary/50 text-muted-foreground border-transparent hover:border-border"
-                  )}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-            {durationMode !== 'ongoing' && (
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-1">
-                  {durationPresets[durationMode].map(v => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setDurationValue(String(v))}
-                      className={cn(
-                        "rounded-lg px-3 py-1.5 text-xs font-medium transition-all border",
-                        durationValue === String(v)
-                          ? "bg-primary/10 text-primary border-primary/30"
-                          : "bg-secondary/50 text-muted-foreground border-transparent hover:border-border"
-                      )}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-                <Input
-                  type="number"
-                  placeholder={`Custom (max ${durationMax[durationMode]})`}
-                  value={durationValue}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value) || 0
-                    setDurationValue(v > durationMax[durationMode] ? String(durationMax[durationMode]) : e.target.value)
+            <div className="flex gap-2">
+              <Select
+                value={durationMode}
+                onValueChange={(val: 'ongoing' | 'weeks' | 'months' | 'years') => {
+                  setDurationMode(val)
+                  setDurationValue('')
+                  setIsCustomDuration(false)
+                }}
+              >
+                <SelectTrigger className="bg-secondary/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ongoing">Ongoing</SelectItem>
+                  <SelectItem value="weeks">Weeks</SelectItem>
+                  <SelectItem value="months">Months</SelectItem>
+                  <SelectItem value="years">Years</SelectItem>
+                </SelectContent>
+              </Select>
+              {durationMode !== 'ongoing' && !isCustomDuration && (
+                <Select
+                  value={durationValue || ''}
+                  onValueChange={(val) => {
+                    if (val === 'custom') {
+                      setIsCustomDuration(true)
+                      setDurationValue('')
+                    } else {
+                      setDurationValue(val)
+                    }
                   }}
-                  min={1}
-                  max={durationMax[durationMode]}
-                  className="bg-secondary/50 text-sm"
-                />
-              </div>
-            )}
+                >
+                  <SelectTrigger className="bg-secondary/50">
+                    <SelectValue placeholder={`Select ${durationMode}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {durationPresets[durationMode].map(v => (
+                      <SelectItem key={v} value={String(v)}>
+                        {v} {durationMode}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom">Custom...</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+              {durationMode !== 'ongoing' && isCustomDuration && (
+                <div className="flex gap-2 flex-1">
+                  <Input
+                    type="number"
+                    placeholder={`Max ${durationMax[durationMode]}`}
+                    value={durationValue}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value) || 0
+                      setDurationValue(v > durationMax[durationMode] ? String(durationMax[durationMode]) : e.target.value)
+                    }}
+                    min={1}
+                    max={durationMax[durationMode]}
+                    className="bg-secondary/50 text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setIsCustomDuration(false); setDurationValue('') }}
+                    className="shrink-0 text-xs"
+                  >
+                    Presets
+                  </Button>
+                </div>
+              )}
+            </div>
             <Button onClick={handleSaveDurationEdit} className="w-full gap-2">
               <Check className="w-4 h-4" />
               Save Duration
@@ -1161,7 +1286,7 @@ export function TrainingPlanner() {
                           </DragOverlay>
                         </DndContext>
 
-                        {/* Add Exercise / Copy From buttons */}
+                        {/* Add Exercise / Split Selector buttons */}
                         <div className="flex gap-2">
                         <Dialog 
                           open={addExerciseDialog === dayPlan.day} 
@@ -1228,73 +1353,22 @@ export function TrainingPlanner() {
                           </DialogContent>
                         </Dialog>
 
-                        {/* Copy from another day */}
-                        <Dialog
-                          open={copyToDay === dayPlan.day}
-                          onOpenChange={(open) => setCopyToDay(open ? dayPlan.day : null)}
+                        {/* Split type selector */}
+                        <Select
+                          value={splitLabel || ''}
+                          onValueChange={(val) => handleChangeSplit(dayPlan.day, val)}
                         >
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-2 border-dashed"
-                              disabled={daysWithExercises.filter(d => d.day !== dayPlan.day).length === 0}
-                            >
-                              <Copy className="w-4 h-4" />
-                              Copy From
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Copy exercises to {dayPlan.day}</DialogTitle>
-                              <DialogDescription>
-                                Pick a day to copy its exercises into {dayPlan.day}. Duplicates are skipped.
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-2 pt-4">
-                              {daysWithExercises
-                                .filter(d => d.day !== dayPlan.day)
-                                .map(sourceDay => {
-                                  const srcExercises = sourceDay.exercises
-                                    .map(id => exercises.find(e => e.id === id))
-                                    .filter(Boolean) as Exercise[]
-                                  const srcGroups = [...new Set(srcExercises.map(e => e.muscleGroup))]
-                                  return (
-                                    <motion.button
-                                      key={sourceDay.day}
-                                      whileHover={{ scale: 1.01, x: 4 }}
-                                      onClick={() => handleCopyExercises(dayPlan.day, sourceDay.day)}
-                                      className="w-full flex items-center gap-3 p-3 rounded-xl bg-secondary/30 hover:bg-secondary/60 transition-colors text-left border border-transparent hover:border-border/50"
-                                    >
-                                      <div className={cn(
-                                        "w-10 h-10 rounded-lg flex items-center justify-center",
-                                        "bg-primary/10"
-                                      )}>
-                                        <Calendar className="w-5 h-5 text-primary" />
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="font-medium">{sourceDay.day}</p>
-                                        <div className="flex items-center gap-1 flex-wrap">
-                                          <span className="text-xs text-muted-foreground">
-                                            {srcExercises.length} exercises
-                                          </span>
-                                          {srcGroups.slice(0, 3).map(g => {
-                                            const col = getMuscleGroupColor(g)
-                                            return (
-                                              <Badge key={g} variant="outline" className={cn("text-[10px] px-1 py-0 capitalize", col.bg, col.text, col.border)}>
-                                                {g}
-                                              </Badge>
-                                            )
-                                          })}
-                                        </div>
-                                      </div>
-                                      <Copy className="w-4 h-4 text-muted-foreground" />
-                                    </motion.button>
-                                  )
-                                })}
-                            </div>
-                          </DialogContent>
-                        </Dialog>
+                          <SelectTrigger className="h-8 -mt-[2px] text-xs bg-secondary/30 border-dashed">
+                            <SelectValue placeholder="Split type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {planSplitOptions.map(opt => (
+                              <SelectItem key={opt} value={opt}>
+                                {opt}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         </div>
                       </CardContent>
                     </CollapsibleContent>
