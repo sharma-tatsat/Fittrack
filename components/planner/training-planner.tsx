@@ -75,6 +75,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { format, isBefore, startOfDay } from 'date-fns'
+import { Calendar as CalendarWidget } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -320,6 +323,7 @@ export function TrainingPlanner() {
   const [durationValue, setDurationValue] = useState('')
   const [isCustomDuration, setIsCustomDuration] = useState(false)
   const [isEditingDuration, setIsEditingDuration] = useState(false)
+  const [planStartDate, setPlanStartDate] = useState<Date>(new Date())
   const [addExerciseDialog, setAddExerciseDialog] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [exerciseSearch, setExerciseSearch] = useState('')
@@ -423,6 +427,7 @@ export function TrainingPlanner() {
     if (!name) return
 
     const weeks = computeWeeks(durationMode, durationValue)
+    const startDateStr = format(planStartDate, 'yyyy-MM-dd')
 
     if (selectedTemplateObj) {
       // Collect exercise slots from template's training days (days that have exercises)
@@ -449,14 +454,14 @@ export function TrainingPlanner() {
       addTrainingPlan({
         name,
         durationWeeks: weeks,
-        startDate: weeks > 0 ? new Date().toISOString().split('T')[0] : null,
+        startDate: startDateStr,
         days: resolvedDays,
       })
     } else {
       addTrainingPlan({
         name,
         durationWeeks: weeks,
-        startDate: weeks > 0 ? new Date().toISOString().split('T')[0] : null,
+        startDate: startDateStr,
         days: DAYS.map(day => ({ day, exercises: [], isRest: restDays.has(day) })),
       })
     }
@@ -468,6 +473,7 @@ export function TrainingPlanner() {
     setDurationValue('')
     setIsCustomDuration(false)
     setPlanWeeks(0)
+    setPlanStartDate(new Date())
     setIsAddingPlan(false)
   }
 
@@ -601,7 +607,7 @@ export function TrainingPlanner() {
     const weeks = computeWeeks(durationMode, durationValue)
     updateTrainingPlan(activePlan.id, {
       durationWeeks: weeks,
-      startDate: weeks > 0 ? (activePlan.startDate || new Date().toISOString().split('T')[0]) : null,
+      startDate: format(planStartDate, 'yyyy-MM-dd'),
     })
     setIsEditingDuration(false)
   }
@@ -616,7 +622,7 @@ export function TrainingPlanner() {
         .map(id => exercises.find(e => e.id === id)?.muscleGroup)
         .filter(Boolean)
     )
-    const has = (...gs: string[]) => gs.some(g => groups.has(g))
+    const has = (...gs: string[]) => gs.some(g => groups.has(g as never))
     const isUpper = has('chest', 'back', 'shoulders', 'arms') && !has('legs')
     const isLower = has('legs') && !has('chest', 'back', 'shoulders')
     const isPush = has('chest', 'shoulders') && !has('back', 'legs')
@@ -683,7 +689,7 @@ export function TrainingPlanner() {
               ))}
             </SelectContent>
           </Select>
-          <Dialog open={isAddingPlan} onOpenChange={(open) => { setIsAddingPlan(open); if (!open) { setSelectedTemplate(null); setNewPlanName(''); setRestDays(new Set(['Saturday', 'Sunday'])); setPlanWeeks(0); setDurationMode('ongoing'); setDurationValue(''); setIsCustomDuration(false); } }}>
+          <Dialog open={isAddingPlan} onOpenChange={(open) => { setIsAddingPlan(open); if (!open) { setSelectedTemplate(null); setNewPlanName(''); setRestDays(new Set(['Saturday', 'Sunday'])); setPlanWeeks(0); setDurationMode('ongoing'); setDurationValue(''); setIsCustomDuration(false); setPlanStartDate(new Date()); } }}>
             <DialogTrigger asChild>
               <Button size="icon" variant="outline" className="shrink-0">
                 <Plus className="w-4 h-4" />
@@ -846,6 +852,33 @@ export function TrainingPlanner() {
                   </div>
                 </div>
 
+                {/* Start date picker */}
+                <div>
+                  <p className="text-sm font-medium mb-2">Start Date</p>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal bg-secondary/50",
+                          !planStartDate && "text-muted-foreground"
+                        )}
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        {format(planStartDate, 'PPP')}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarWidget
+                        mode="single"
+                        selected={planStartDate}
+                        onSelect={(date) => date && setPlanStartDate(date)}
+                        disabled={(date) => isBefore(startOfDay(date), startOfDay(new Date()))}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
                 <Button onClick={handleCreatePlan} className="w-full gap-2">
                   <Sparkles className="w-4 h-4" />
                   Create Plan
@@ -874,6 +907,9 @@ export function TrainingPlanner() {
                     {activePlan.days.filter(d => !d.isRest).length} training days &middot; {activePlan.days.filter(d => d.isRest).length} rest days
                     {activePlan.durationWeeks > 0 && (
                       <> &middot; {activePlan.durationWeeks} weeks</>
+                    )}
+                    {activePlan.startDate && (
+                      <> &middot; starts {format(new Date(activePlan.startDate), 'MMM d, yyyy')}</>
                     )}
                   </p>
                   {activePlan.durationWeeks > 0 && activePlan.startDate && (() => {
@@ -912,6 +948,7 @@ export function TrainingPlanner() {
                       setDurationValue(String(w))
                     }
                     setIsEditingDuration(true)
+                    setPlanStartDate(activePlan.startDate ? new Date(activePlan.startDate) : new Date())
                   }}
                   className="text-muted-foreground hover:text-primary hover:bg-primary/10"
                   title="Edit duration"
@@ -1120,6 +1157,31 @@ export function TrainingPlanner() {
                   </Button>
                 </div>
               )}
+            </div>
+            {/* Start date picker in edit dialog */}
+            <div>
+              <p className="text-sm font-medium mb-2">Start Date</p>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal bg-secondary/50",
+                      !planStartDate && "text-muted-foreground"
+                    )}
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    {format(planStartDate, 'PPP')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarWidget
+                    mode="single"
+                    selected={planStartDate}
+                    onSelect={(date) => date && setPlanStartDate(date)}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <Button onClick={handleSaveDurationEdit} className="w-full gap-2">
               <Check className="w-4 h-4" />

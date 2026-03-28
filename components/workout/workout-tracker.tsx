@@ -247,12 +247,17 @@ export function WorkoutTracker() {
 
   // Get today's planned exercises from the active training plan
   const activePlan = trainingPlans.find(p => p.id === activeTrainingPlanId)
-  const todayPlan = activePlan?.days.find(d => d.day === todayName)
+
+  // Check if plan has started yet
+  const planStarted = !activePlan?.startDate || new Date(activePlan.startDate) <= new Date()
+  const planStartDate = activePlan?.startDate ? new Date(activePlan.startDate) : null
+
+  const todayPlan = planStarted ? activePlan?.days.find(d => d.day === todayName) : undefined
   const todayExerciseIds = new Set(todayPlan?.exercises ?? [])
   const todayExercises = (todayPlan?.exercises ?? [])
     .map(id => exercises.find(e => e.id === id))
     .filter(Boolean) as Exercise[]
-  const isRestDay = activePlan != null && (todayPlan?.isRest ?? false)
+  const isRestDay = activePlan != null && planStarted && (todayPlan?.isRest ?? false)
 
   // Derive split label from muscle groups
   const getSplitLabel = (exerciseIds: string[]): string | null => {
@@ -260,7 +265,7 @@ export function WorkoutTracker() {
     const groups = new Set(
       exerciseIds.map(id => exercises.find(e => e.id === id)?.muscleGroup).filter(Boolean)
     )
-    const has = (...gs: string[]) => gs.some(g => groups.has(g))
+    const has = (...gs: string[]) => gs.some(g => groups.has(g as never))
     const isUpper = has('chest', 'back', 'shoulders', 'arms') && !has('legs')
     const isLower = has('legs') && !has('chest', 'back', 'shoulders')
     const isPush = has('chest', 'shoulders') && !has('back', 'legs')
@@ -476,6 +481,21 @@ export function WorkoutTracker() {
           </p>
         </div>
       </div>
+
+      {/* Plan Not Started Banner */}
+      {activePlan && !planStarted && planStartDate && (
+        <Card className="bg-gradient-to-r from-primary/10 to-transparent border-primary/20">
+          <CardContent className="p-6 text-center">
+            <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <Calendar className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="font-semibold text-lg mb-1">Plan Starts {format(planStartDate, 'EEEE, MMM d')}</h3>
+            <p className="text-sm text-muted-foreground">
+              Your plan <strong>{activePlan.name}</strong> hasn{"'"}t begun yet. You can still log workouts below.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Today's Planned Exercises */}
       {activePlan && !isRestDay && todayExercises.length > 0 && (

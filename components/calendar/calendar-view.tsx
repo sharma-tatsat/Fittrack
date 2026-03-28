@@ -80,11 +80,15 @@ export function CalendarView() {
     const dayName = DAY_NAMES[date.getDay()]
     const planDay = activePlan.days.find(d => d.day === dayName)
     if (!planDay || planDay.isRest) return false
-    // If the plan has a duration + start date, check bounds
-    if (activePlan.durationWeeks && activePlan.startDate) {
+    // Don't show as planned before the start date
+    if (activePlan.startDate) {
       const planStart = startOfDay(new Date(activePlan.startDate))
-      const planEnd = addWeeks(planStart, activePlan.durationWeeks)
-      if (isBefore(date, planStart) || isAfter(date, planEnd)) return false
+      if (isBefore(date, planStart)) return false
+      // If the plan has a duration, also check upper bound
+      if (activePlan.durationWeeks) {
+        const planEnd = addWeeks(planStart, activePlan.durationWeeks)
+        if (isAfter(date, planEnd)) return false
+      }
     }
     return true
   }
@@ -93,8 +97,17 @@ export function CalendarView() {
     if (!activePlan) return false
     const dayName = DAY_NAMES[date.getDay()]
     const planDay = activePlan.days.find(d => d.day === dayName)
-    if (!planDay) return false
-    return planDay.isRest === true
+    if (!planDay || !planDay.isRest) return false
+    // Don't show as planned before the start date
+    if (activePlan.startDate) {
+      const planStart = startOfDay(new Date(activePlan.startDate))
+      if (isBefore(date, planStart)) return false
+      if (activePlan.durationWeeks) {
+        const planEnd = addWeeks(planStart, activePlan.durationWeeks)
+        if (isAfter(date, planEnd)) return false
+      }
+    }
+    return true
   }
 
   // Monthly stats
