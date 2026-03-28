@@ -11,7 +11,6 @@ export default defineConfig({
   },
   engine: "classic",
   datasource: {
-    // CLI resolves file: paths relative to schema dir, so use ./dev.db for migrations
-    url: "file:./dev.db",
+    url: env("DATABASE_URL")!,
   },
 });
