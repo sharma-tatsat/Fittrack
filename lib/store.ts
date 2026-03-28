@@ -96,6 +96,9 @@ interface FitnessStore {
   weightUnit: 'lbs' | 'kg'
   setWeightUnit: (unit: 'lbs' | 'kg') => void
 
+  // Reset
+  resetStatistics: () => void
+
   // Server sync
   loadFromServer: () => Promise<void>
 }
@@ -363,6 +366,12 @@ export const useFitnessStore = create<FitnessStore>()(
       // Preferences
       weightUnit: 'lbs',
       setWeightUnit: (unit) => set({ weightUnit: unit }),
+
+      // Reset
+      resetStatistics: () => {
+        set({ workoutLogs: [], personalRecords: [], checkIns: [] })
+        fetch('/api/user/reset', { method: 'POST' }).catch(() => {})
+      },
 
       // Load all data from server APIs into the store
       loadFromServer: async () => {

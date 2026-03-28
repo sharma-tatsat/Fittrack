@@ -187,6 +187,23 @@ const dayConfig: Record<string, { icon: typeof Sun; color: string }> = {
   Sunday: { icon: Coffee, color: 'text-cyan-500' },
 }
 
+const SPLIT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  Push:              { bg: 'bg-rose-500/10',    text: 'text-rose-500',    border: 'border-rose-500/25' },
+  Pull:              { bg: 'bg-blue-500/10',    text: 'text-blue-500',    border: 'border-blue-500/25' },
+  Legs:              { bg: 'bg-emerald-500/10', text: 'text-emerald-500', border: 'border-emerald-500/25' },
+  Upper:             { bg: 'bg-violet-500/10',  text: 'text-violet-500',  border: 'border-violet-500/25' },
+  Lower:             { bg: 'bg-amber-500/10',   text: 'text-amber-500',   border: 'border-amber-500/25' },
+  Chest:             { bg: 'bg-red-500/10',     text: 'text-red-500',     border: 'border-red-500/25' },
+  Back:              { bg: 'bg-sky-500/10',     text: 'text-sky-500',     border: 'border-sky-500/25' },
+  Shoulders:         { bg: 'bg-orange-500/10',  text: 'text-orange-500',  border: 'border-orange-500/25' },
+  Arms:              { bg: 'bg-pink-500/10',    text: 'text-pink-500',    border: 'border-pink-500/25' },
+  Core:              { bg: 'bg-teal-500/10',    text: 'text-teal-500',    border: 'border-teal-500/25' },
+  'Full Body':       { bg: 'bg-indigo-500/10',  text: 'text-indigo-500',  border: 'border-indigo-500/25' },
+  'Chest / Back':    { bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-500', border: 'border-fuchsia-500/25' },
+  'Shoulders / Arms':{ bg: 'bg-lime-500/10',    text: 'text-lime-500',    border: 'border-lime-500/25' },
+}
+const DEFAULT_SPLIT_COLOR = { bg: 'bg-primary/5', text: 'text-primary', border: 'border-primary/20' }
+
 // ─── Split presets: split label → exercise names ───────────────────
 const SPLIT_PRESETS: Record<string, string[]> = {
   Push: ['Bench Press', 'Incline Press', 'Cable Fly', 'Overhead Press', 'Lateral Raises', 'Tricep Pushdowns'],
@@ -1243,7 +1260,12 @@ export function TrainingPlanner() {
                               <div className="flex items-center gap-2">
                                 <h3 className="font-semibold">{dayPlan.day}</h3>
                                 {splitLabel && !isRestDay && (
-                                  <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20">
+                                  <Badge variant="outline" className={cn(
+                                    "text-xs",
+                                    (SPLIT_COLORS[splitLabel] || DEFAULT_SPLIT_COLOR).bg,
+                                    (SPLIT_COLORS[splitLabel] || DEFAULT_SPLIT_COLOR).text,
+                                    (SPLIT_COLORS[splitLabel] || DEFAULT_SPLIT_COLOR).border,
+                                  )}>
                                     {splitLabel}
                                   </Badge>
                                 )}

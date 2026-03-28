@@ -12,12 +12,24 @@ import {
   Dumbbell,
   TrendingUp,
   Save,
-  LogOut
+  LogOut,
+  RotateCcw,
+  AlertTriangle
 } from 'lucide-react'
 import { useFitnessStore } from '@/lib/store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 
@@ -44,11 +56,13 @@ export function ProfileSettings() {
     personalRecords, 
     workoutLogs, 
     checkIns,
-    exercises 
+    exercises,
+    resetStatistics
   } = useFitnessStore()
   
   const [editedUser, setEditedUser] = useState(user)
   const [saved, setSaved] = useState(false)
+  const [confirmReset, setConfirmReset] = useState(false)
   
   const streak = getStreak()
   const totalWorkouts = checkIns.filter(c => c.completed).length
@@ -285,6 +299,55 @@ export function ProfileSettings() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Reset Statistics */}
+      <motion.div variants={item}>
+        <Card className="border-destructive/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium flex items-center gap-2">
+                  <RotateCcw className="w-4 h-4 text-destructive" />
+                  Reset Statistics
+                </h3>
+                <p className="text-sm text-muted-foreground">Clear all workout logs, personal records, and check-ins</p>
+              </div>
+              <Button 
+                variant="outline" 
+                className="gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                onClick={() => setConfirmReset(true)}
+              >
+                <RotateCcw className="w-4 h-4" />
+                Reset
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Reset Confirmation */}
+      <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Reset All Statistics
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all your workout logs ({totalSets} sets), personal records ({totalPRs} PRs), and check-ins ({totalWorkouts} workouts). This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => resetStatistics()}
+            >
+              Reset Everything
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Sign Out */}
       <motion.div variants={item}>
