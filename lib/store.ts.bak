@@ -1,0 +1,278 @@
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+// Types
+export interface Exercise {
+  id: string
+  name: string
+  muscleGroup: MuscleGroup
+  icon: string
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  isCustom: boolean
+}
+
+export type MuscleGroup = 'chest' | 'back' | 'legs' | 'shoulders' | 'arms' | 'core'
+
+export interface WorkoutLog {
+  id: string
+  exerciseId: string
+  weight: number
+  reps: number
+  sets: number
+  date: string
+}
+
+export interface PersonalRecord {
+  exerciseId: string
+  maxWeight: number
+  date: string
+}
+
+export interface TrainingDay {
+  day: string
+  exercises: string[] // exercise IDs
+}
+
+export interface TrainingPlan {
+  id: string
+  name: string
+  days: TrainingDay[]
+}
+
+export interface CheckIn {
+  date: string
+  completed: boolean
+}
+
+export interface User {
+  name: string
+  email: string
+}
+
+// Default exercises database
+const defaultExercises: Exercise[] = [
+  // Chest
+  { id: 'bench-press', name: 'Bench Press', muscleGroup: 'chest', icon: 'Dumbbell', difficulty: 'intermediate', isCustom: false },
+  { id: 'incline-press', name: 'Incline Press', muscleGroup: 'chest', icon: 'Dumbbell', difficulty: 'intermediate', isCustom: false },
+  { id: 'cable-fly', name: 'Cable Fly', muscleGroup: 'chest', icon: 'Cable', difficulty: 'beginner', isCustom: false },
+  { id: 'dumbbell-fly', name: 'Dumbbell Fly', muscleGroup: 'chest', icon: 'Dumbbell', difficulty: 'beginner', isCustom: false },
+  { id: 'push-ups', name: 'Push Ups', muscleGroup: 'chest', icon: 'User', difficulty: 'beginner', isCustom: false },
+  
+  // Back
+  { id: 'pull-ups', name: 'Pull Ups', muscleGroup: 'back', icon: 'ArrowUp', difficulty: 'intermediate', isCustom: false },
+  { id: 'lat-pulldown', name: 'Lat Pulldown', muscleGroup: 'back', icon: 'ArrowDown', difficulty: 'beginner', isCustom: false },
+  { id: 'deadlift', name: 'Deadlift', muscleGroup: 'back', icon: 'Dumbbell', difficulty: 'advanced', isCustom: false },
+  { id: 'barbell-rows', name: 'Barbell Rows', muscleGroup: 'back', icon: 'Dumbbell', difficulty: 'intermediate', isCustom: false },
+  { id: 'cable-rows', name: 'Cable Rows', muscleGroup: 'back', icon: 'Cable', difficulty: 'beginner', isCustom: false },
+  
+  // Legs
+  { id: 'squats', name: 'Squats', muscleGroup: 'legs', icon: 'Dumbbell', difficulty: 'intermediate', isCustom: false },
+  { id: 'leg-press', name: 'Leg Press', muscleGroup: 'legs', icon: 'Square', difficulty: 'beginner', isCustom: false },
+  { id: 'lunges', name: 'Lunges', muscleGroup: 'legs', icon: 'Footprints', difficulty: 'beginner', isCustom: false },
+  { id: 'leg-extensions', name: 'Leg Extensions', muscleGroup: 'legs', icon: 'Zap', difficulty: 'beginner', isCustom: false },
+  { id: 'leg-curls', name: 'Leg Curls', muscleGroup: 'legs', icon: 'Zap', difficulty: 'beginner', isCustom: false },
+  { id: 'calf-raises', name: 'Calf Raises', muscleGroup: 'legs', icon: 'ArrowUp', difficulty: 'beginner', isCustom: false },
+  
+  // Shoulders
+  { id: 'overhead-press', name: 'Overhead Press', muscleGroup: 'shoulders', icon: 'ArrowUp', difficulty: 'intermediate', isCustom: false },
+  { id: 'lateral-raises', name: 'Lateral Raises', muscleGroup: 'shoulders', icon: 'Expand', difficulty: 'beginner', isCustom: false },
+  { id: 'front-raises', name: 'Front Raises', muscleGroup: 'shoulders', icon: 'ArrowUp', difficulty: 'beginner', isCustom: false },
+  { id: 'rear-delt-fly', name: 'Rear Delt Fly', muscleGroup: 'shoulders', icon: 'Expand', difficulty: 'beginner', isCustom: false },
+  
+  // Arms
+  { id: 'bicep-curls', name: 'Bicep Curls', muscleGroup: 'arms', icon: 'Dumbbell', difficulty: 'beginner', isCustom: false },
+  { id: 'hammer-curls', name: 'Hammer Curls', muscleGroup: 'arms', icon: 'Dumbbell', difficulty: 'beginner', isCustom: false },
+  { id: 'tricep-pushdowns', name: 'Tricep Pushdowns', muscleGroup: 'arms', icon: 'ArrowDown', difficulty: 'beginner', isCustom: false },
+  { id: 'tricep-dips', name: 'Tricep Dips', muscleGroup: 'arms', icon: 'ArrowDown', difficulty: 'intermediate', isCustom: false },
+  { id: 'skull-crushers', name: 'Skull Crushers', muscleGroup: 'arms', icon: 'Dumbbell', difficulty: 'intermediate', isCustom: false },
+  
+  // Core
+  { id: 'crunches', name: 'Crunches', muscleGroup: 'core', icon: 'Target', difficulty: 'beginner', isCustom: false },
+  { id: 'planks', name: 'Planks', muscleGroup: 'core', icon: 'Minus', difficulty: 'beginner', isCustom: false },
+  { id: 'leg-raises', name: 'Leg Raises', muscleGroup: 'core', icon: 'ArrowUp', difficulty: 'intermediate', isCustom: false },
+  { id: 'russian-twists', name: 'Russian Twists', muscleGroup: 'core', icon: 'RotateCw', difficulty: 'intermediate', isCustom: false },
+  { id: 'mountain-climbers', name: 'Mountain Climbers', muscleGroup: 'core', icon: 'Mountain', difficulty: 'intermediate', isCustom: false },
+]
+
+interface FitnessStore {
+  // User
+  user: User
+  setUser: (user: User) => void
+  
+  // Exercises
+  exercises: Exercise[]
+  addExercise: (exercise: Omit<Exercise, 'id' | 'isCustom'>) => void
+  
+  // Workout Logs
+  workoutLogs: WorkoutLog[]
+  addWorkoutLog: (log: Omit<WorkoutLog, 'id'>) => { isNewPR: boolean; log: WorkoutLog }
+  getExerciseLogs: (exerciseId: string) => WorkoutLog[]
+  
+  // Personal Records
+  personalRecords: PersonalRecord[]
+  getPR: (exerciseId: string) => PersonalRecord | undefined
+  
+  // Training Plans
+  trainingPlans: TrainingPlan[]
+  activeTrainingPlanId: string | null
+  addTrainingPlan: (plan: Omit<TrainingPlan, 'id'>) => void
+  updateTrainingPlan: (id: string, plan: Partial<TrainingPlan>) => void
+  deleteTrainingPlan: (id: string) => void
+  setActiveTrainingPlan: (id: string | null) => void
+  
+  // Check-ins
+  checkIns: CheckIn[]
+  toggleCheckIn: (date: string) => void
+  getStreak: () => number
+  
+  // Navigation
+  activeTab: string
+  setActiveTab: (tab: string) => void
+}
+
+export const useFitnessStore = create<FitnessStore>()(
+  persist(
+    (set, get) => ({
+      // User
+      user: { name: 'Athlete', email: 'athlete@example.com' },
+      setUser: (user) => set({ user }),
+      
+      // Exercises
+      exercises: defaultExercises,
+      addExercise: (exercise) => {
+        const newExercise: Exercise = {
+          ...exercise,
+          id: `custom-${Date.now()}`,
+          isCustom: true,
+        }
+        set((state) => ({ exercises: [...state.exercises, newExercise] }))
+      },
+      
+      // Workout Logs
+      workoutLogs: [],
+      addWorkoutLog: (log) => {
+        const newLog: WorkoutLog = {
+          ...log,
+          id: `log-${Date.now()}`,
+        }
+        
+        const currentPR = get().personalRecords.find(pr => pr.exerciseId === log.exerciseId)
+        const isNewPR = !currentPR || log.weight > currentPR.maxWeight
+        
+        if (isNewPR) {
+          set((state) => ({
+            personalRecords: [
+              ...state.personalRecords.filter(pr => pr.exerciseId !== log.exerciseId),
+              { exerciseId: log.exerciseId, maxWeight: log.weight, date: log.date }
+            ]
+          }))
+        }
+        
+        set((state) => ({ workoutLogs: [...state.workoutLogs, newLog] }))
+        return { isNewPR, log: newLog }
+      },
+      getExerciseLogs: (exerciseId) => {
+        return get().workoutLogs
+          .filter(log => log.exerciseId === exerciseId)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      },
+      
+      // Personal Records
+      personalRecords: [],
+      getPR: (exerciseId) => get().personalRecords.find(pr => pr.exerciseId === exerciseId),
+      
+      // Training Plans
+      trainingPlans: [
+        {
+          id: 'ppl',
+          name: 'Push Pull Legs',
+          days: [
+            { day: 'Monday', exercises: ['bench-press', 'incline-press', 'cable-fly', 'overhead-press', 'tricep-pushdowns'] },
+            { day: 'Tuesday', exercises: ['pull-ups', 'barbell-rows', 'lat-pulldown', 'bicep-curls', 'hammer-curls'] },
+            { day: 'Wednesday', exercises: ['squats', 'leg-press', 'leg-extensions', 'leg-curls', 'calf-raises'] },
+            { day: 'Thursday', exercises: ['bench-press', 'dumbbell-fly', 'lateral-raises', 'tricep-dips'] },
+            { day: 'Friday', exercises: ['deadlift', 'cable-rows', 'pull-ups', 'bicep-curls'] },
+            { day: 'Saturday', exercises: ['squats', 'lunges', 'leg-extensions', 'calf-raises'] },
+            { day: 'Sunday', exercises: [] },
+          ]
+        }
+      ],
+      activeTrainingPlanId: 'ppl',
+      addTrainingPlan: (plan) => {
+        const newPlan: TrainingPlan = {
+          ...plan,
+          id: `plan-${Date.now()}`,
+        }
+        set((state) => ({ trainingPlans: [...state.trainingPlans, newPlan] }))
+      },
+      updateTrainingPlan: (id, updates) => {
+        set((state) => ({
+          trainingPlans: state.trainingPlans.map(plan => 
+            plan.id === id ? { ...plan, ...updates } : plan
+          )
+        }))
+      },
+      deleteTrainingPlan: (id) => {
+        set((state) => ({
+          trainingPlans: state.trainingPlans.filter(plan => plan.id !== id),
+          activeTrainingPlanId: state.activeTrainingPlanId === id ? null : state.activeTrainingPlanId
+        }))
+      },
+      setActiveTrainingPlan: (id) => set({ activeTrainingPlanId: id }),
+      
+      // Check-ins
+      checkIns: [],
+      toggleCheckIn: (date) => {
+        set((state) => {
+          const existing = state.checkIns.find(c => c.date === date)
+          if (existing) {
+            return {
+              checkIns: state.checkIns.map(c => 
+                c.date === date ? { ...c, completed: !c.completed } : c
+              )
+            }
+          }
+          return { checkIns: [...state.checkIns, { date, completed: true }] }
+        })
+      },
+      getStreak: () => {
+        const checkIns = get().checkIns.filter(c => c.completed)
+        if (checkIns.length === 0) return 0
+        
+        const sortedDates = checkIns
+          .map(c => new Date(c.date))
+          .sort((a, b) => b.getTime() - a.getTime())
+        
+        let streak = 0
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        
+        for (let i = 0; i < sortedDates.length; i++) {
+          const checkDate = new Date(sortedDates[i])
+          checkDate.setHours(0, 0, 0, 0)
+          
+          const expectedDate = new Date(today)
+          expectedDate.setDate(today.getDate() - i)
+          
+          if (checkDate.getTime() === expectedDate.getTime()) {
+            streak++
+          } else if (i === 0 && checkDate.getTime() === new Date(today.getTime() - 86400000).getTime()) {
+            // Yesterday counts as continuing streak
+            streak++
+          } else {
+            break
+          }
+        }
+        
+        return streak
+      },
+      
+      // Navigation
+      activeTab: 'dashboard',
+      setActiveTab: (tab) => set({ activeTab: tab }),
+    }),
+    {
+      name: 'fitness-store',
+    }
+  )
+)

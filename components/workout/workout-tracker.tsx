@@ -1,0 +1,683 @@
+'use client'
+
+import { useState, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import confetti from 'canvas-confetti'
+import { 
+  Search, 
+  Plus, 
+  Trophy,
+  TrendingUp,
+  Check,
+  X,
+  ChevronDown,
+  Flame,
+  Zap,
+  Star,
+  Calendar,
+  Dumbbell
+} from 'lucide-react'
+import { useFitnessStore, type Exercise, type PersonalRecord, type WorkoutLog } from '@/lib/store'
+import { ExerciseIcon, getMuscleGroupColor } from '@/lib/exercise-icons'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
+import { cn } from '@/lib/utils'
+import { format } from 'date-fns'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Area,
+  AreaChart,
+} from 'recharts'
+
+// Extracted exercise card component
+function ExerciseCard({
+  exercise,
+  index,
+  getPR,
+  getExerciseLogs,
+  getChartData,
+  expandedExercise,
+  setExpandedExercise,
+  setSelectedExercise,
+  weightUnit,
+}: {
+  exercise: Exercise
+  index: number
+  getPR: (id: string) => PersonalRecord | undefined
+  getExerciseLogs: (id: string) => WorkoutLog[]
+  getChartData: (id: string) => { date: string; weight: number }[]
+  expandedExercise: string | null
+  setExpandedExercise: (id: string | null) => void
+  setSelectedExercise: (e: Exercise | null) => void
+  weightUnit: 'lbs' | 'kg'
+}) {
+  const pr = getPR(exercise.id)
+  const logs = getExerciseLogs(exercise.id)
+  const chartData = getChartData(exercise.id)
+  const isExpanded = expandedExercise === exercise.id
+  const colorConfig = getMuscleGroupColor(exercise.muscleGroup)
+
+  return (
+    <motion.div
+      key={exercise.id}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.03 }}
+    >
+      <Collapsible
+        open={isExpanded}
+        onOpenChange={() => setExpandedExercise(isExpanded ? null : exercise.id)}
+      >
+        <Card className={cn(
+          "overflow-hidden transition-all",
+          isExpanded && "ring-2 ring-primary/30"
+        )}>
+          <div className={cn("h-1 bg-gradient-to-r", colorConfig.gradient)} />
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-secondary/30 transition-colors p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    className={cn("w-12 h-12 rounded-xl flex items-center justify-center", colorConfig.bg)}
+                  >
+                    <ExerciseIcon
+                      exerciseId={exercise.id}
+                      muscleGroup={exercise.muscleGroup}
+                      className={cn("w-6 h-6", colorConfig.text)}
+                    />
+                  </motion.div>
+                  <div>
+                    <h3 className="font-semibold">{exercise.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className={cn("text-xs capitalize", colorConfig.bg, colorConfig.text, colorConfig.border)}
+                      >
+                        {exercise.muscleGroup}
+                      </Badge>
+                      {pr && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Trophy className="w-3 h-3 text-amber-500" />
+                          <span className="text-primary font-semibold">{pr.maxWeight} {weightUnit}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedExercise(exercise)
+                    }}
+                    className="gap-1 shadow-lg shadow-primary/20"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Log
+                  </Button>
+                  <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  </motion.div>
+                </div>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 pb-4">
+              {chartData.length > 1 ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <TrendingUp className={cn("w-4 h-4", colorConfig.text)} />
+                    Weight Progression
+                  </div>
+                  <div className="h-48 rounded-xl bg-secondary/20 p-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData}>
+                        <defs>
+                          <linearGradient id={`gradient-${exercise.id}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="oklch(var(--primary))" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="oklch(var(--primary))" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 11, fill: 'oklch(var(--muted-foreground))' }}
+                          stroke="oklch(var(--border))"
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          tick={{ fontSize: 11, fill: 'oklch(var(--muted-foreground))' }}
+                          stroke="oklch(var(--border))"
+                          axisLine={false}
+                          tickLine={false}
+                          width={40}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'oklch(var(--card))',
+                            border: '1px solid oklch(var(--border))',
+                            borderRadius: '12px',
+                            boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+                          }}
+                          labelStyle={{ color: 'oklch(var(--foreground))' }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="weight"
+                          stroke="oklch(var(--primary))"
+                          strokeWidth={3}
+                          fill={`url(#gradient-${exercise.id})`}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{logs.length} total sets logged</span>
+                    {pr && (
+                      <span className="flex items-center gap-1 text-amber-500">
+                        <Trophy className="w-4 h-4" />
+                        Best: {pr.maxWeight} {weightUnit}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-secondary/50 flex items-center justify-center">
+                    <TrendingUp className="w-8 h-8 text-muted-foreground/50" />
+                  </div>
+                  <p className="text-muted-foreground">Log more workouts to see your progress chart</p>
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+    </motion.div>
+  )
+}
+
+export function WorkoutTracker() {
+  const { exercises, trainingPlans, activeTrainingPlanId, addWorkoutLog, getExerciseLogs, getPR, weightUnit, setWeightUnit } = useFitnessStore()
+  const [search, setSearch] = useState('')
+  const [showAllExercises, setShowAllExercises] = useState(false)
+  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
+  const [showPRCelebration, setShowPRCelebration] = useState(false)
+  const [newPRWeight, setNewPRWeight] = useState(0)
+  const [workoutForm, setWorkoutForm] = useState({
+    weight: '',
+    reps: '',
+    sets: '',
+  })
+  const [expandedExercise, setExpandedExercise] = useState<string | null>(null)
+
+  // Determine today's day name
+  const todayName = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date())
+
+  // Get today's planned exercises from the active training plan
+  const activePlan = trainingPlans.find(p => p.id === activeTrainingPlanId)
+  const todayPlan = activePlan?.days.find(d => d.day === todayName)
+  const todayExerciseIds = new Set(todayPlan?.exercises ?? [])
+  const todayExercises = (todayPlan?.exercises ?? [])
+    .map(id => exercises.find(e => e.id === id))
+    .filter(Boolean) as Exercise[]
+  const isRestDay = activePlan != null && (todayPlan?.isRest ?? false)
+
+  // Derive split label from muscle groups
+  const getSplitLabel = (exerciseIds: string[]): string | null => {
+    if (exerciseIds.length === 0) return null
+    const groups = new Set(
+      exerciseIds.map(id => exercises.find(e => e.id === id)?.muscleGroup).filter(Boolean)
+    )
+    const has = (...gs: string[]) => gs.some(g => groups.has(g))
+    const isUpper = has('chest', 'back', 'shoulders', 'arms') && !has('legs')
+    const isLower = has('legs') && !has('chest', 'back', 'shoulders')
+    const isPush = has('chest', 'shoulders') && !has('back', 'legs')
+    const isPull = has('back') && !has('chest', 'legs')
+    const isLegs = has('legs') && groups.size <= 2
+    const isArms = has('arms') && groups.size <= 2
+    if (isPush) return 'Push'
+    if (isPull) return 'Pull'
+    if (isLegs) return 'Legs'
+    if (isArms) return 'Arms'
+    if (isUpper) return 'Upper'
+    if (isLower) return 'Lower'
+    if (groups.size >= 4) return 'Full Body'
+    return [...groups].map(g => (g as string).charAt(0).toUpperCase() + (g as string).slice(1)).join(' / ')
+  }
+  const todaySplitLabel = getSplitLabel(todayPlan?.exercises ?? [])
+
+  // Other exercises (not in today's plan) — shown when searching or toggled
+  const otherExercises = exercises.filter(e => !todayExerciseIds.has(e.id))
+  const filteredOtherExercises = otherExercises.filter(exercise =>
+    exercise.name.toLowerCase().includes(search.toLowerCase())
+  )
+
+  // When no active plan, just show all exercises filtered by search
+  const noActivePlan = !activePlan
+  const filteredExercises = noActivePlan
+    ? exercises.filter(e => e.name.toLowerCase().includes(search.toLowerCase()))
+    : []
+
+  const triggerConfetti = useCallback(() => {
+    const count = 200
+    const defaults = {
+      origin: { y: 0.7 },
+      zIndex: 9999,
+    }
+
+    function fire(particleRatio: number, opts: Record<string, unknown>) {
+      confetti({
+        ...defaults,
+        ...opts,
+        particleCount: Math.floor(count * particleRatio),
+      })
+    }
+
+    fire(0.25, {
+      spread: 26,
+      startVelocity: 55,
+      colors: ['#ff6b35', '#f7c59f', '#2ec4b6', '#ffd700'],
+    })
+    fire(0.2, {
+      spread: 60,
+      colors: ['#ff6b35', '#f7c59f', '#2ec4b6', '#ffd700'],
+    })
+    fire(0.35, {
+      spread: 100,
+      decay: 0.91,
+      scalar: 0.8,
+      colors: ['#ff6b35', '#f7c59f', '#2ec4b6', '#ffd700'],
+    })
+    fire(0.1, {
+      spread: 120,
+      startVelocity: 25,
+      decay: 0.92,
+      scalar: 1.2,
+      colors: ['#ff6b35', '#f7c59f', '#2ec4b6', '#ffd700'],
+    })
+    fire(0.1, {
+      spread: 120,
+      startVelocity: 45,
+      colors: ['#ff6b35', '#f7c59f', '#2ec4b6', '#ffd700'],
+    })
+  }, [])
+
+  const handleLogWorkout = () => {
+    if (!selectedExercise || !workoutForm.weight || !workoutForm.reps || !workoutForm.sets) return
+
+    const { isNewPR } = addWorkoutLog({
+      exerciseId: selectedExercise.id,
+      weight: parseFloat(workoutForm.weight),
+      reps: parseInt(workoutForm.reps),
+      sets: parseInt(workoutForm.sets),
+      date: new Date().toISOString(),
+    })
+
+    if (isNewPR) {
+      setNewPRWeight(parseFloat(workoutForm.weight))
+      setShowPRCelebration(true)
+      triggerConfetti()
+      setTimeout(() => setShowPRCelebration(false), 4000)
+    }
+
+    setWorkoutForm({ weight: '', reps: '', sets: '' })
+    setSelectedExercise(null)
+  }
+
+  const getChartData = (exerciseId: string) => {
+    const logs = getExerciseLogs(exerciseId)
+    return logs.slice(-10).map(log => ({
+      date: format(new Date(log.date), 'MMM d'),
+      weight: log.weight,
+    }))
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* PR Celebration Modal */}
+      <AnimatePresence>
+        {showPRCelebration && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.5, y: 50 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.5, y: 50 }}
+              className="bg-gradient-to-br from-card to-card/80 border-2 border-primary/50 rounded-3xl p-8 text-center max-w-md shadow-2xl shadow-primary/30"
+            >
+              <motion.div
+                animate={{ 
+                  scale: [1, 1.2, 1],
+                  rotate: [0, 10, -10, 0]
+                }}
+                transition={{ duration: 0.5, repeat: 3 }}
+                className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary/30 to-amber-500/30 flex items-center justify-center border-2 border-primary/30"
+              >
+                <Trophy className="w-12 h-12 text-primary" />
+              </motion.div>
+              <motion.h2 
+                className="text-3xl font-bold mb-2"
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 0.5, repeat: 2 }}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <Flame className="w-8 h-8 text-primary" />
+                  NEW PR!
+                  <Flame className="w-8 h-8 text-primary" />
+                </span>
+              </motion.h2>
+              <motion.p 
+                className="text-5xl font-bold text-primary my-4"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+              >
+                {newPRWeight} {weightUnit}
+              </motion.p>
+              <p className="text-muted-foreground text-lg">
+                {"You're stronger than yesterday!"}
+              </p>
+              <div className="flex justify-center gap-1 mt-4">
+                {[...Array(5)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 + i * 0.1 }}
+                  >
+                    <Star className="w-6 h-6 text-amber-500 fill-amber-500" />
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            Workout Tracker
+            <Zap className="w-5 h-5 text-primary" />
+          </h1>
+          <p className="text-muted-foreground">
+            {activePlan
+              ? isRestDay
+                ? `Rest day — ${activePlan.name}`
+                : `${todayName}${todaySplitLabel ? ` · ${todaySplitLabel}` : ''} — ${activePlan.name}`
+              : 'Log your exercises and crush your PRs'}
+          </p>
+        </div>
+      </div>
+
+      {/* Today's Planned Exercises */}
+      {activePlan && !isRestDay && todayExercises.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-primary">
+              {"Today's Plan"}
+            </h2>
+            {todaySplitLabel && (
+              <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20">
+                {todaySplitLabel}
+              </Badge>
+            )}
+            <Badge variant="outline" className="text-xs ml-auto">
+              {todayExercises.length} exercises
+            </Badge>
+          </div>
+          {todayExercises.map((exercise, index) => (
+            <ExerciseCard
+              key={exercise.id}
+              exercise={exercise}
+              index={index}
+              getPR={getPR}
+              getExerciseLogs={getExerciseLogs}
+              getChartData={getChartData}
+              expandedExercise={expandedExercise}
+              setExpandedExercise={setExpandedExercise}
+              setSelectedExercise={setSelectedExercise}
+              weightUnit={weightUnit}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Rest Day Banner */}
+      {activePlan && isRestDay && (
+        <Card className="bg-gradient-to-r from-secondary/50 to-transparent border-border/50">
+          <CardContent className="p-6 text-center">
+            <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-secondary flex items-center justify-center">
+              <Dumbbell className="w-8 h-8 text-muted-foreground/50" />
+            </div>
+            <h3 className="font-semibold text-lg mb-1">Rest Day</h3>
+            <p className="text-sm text-muted-foreground">
+              No exercises planned for {todayName}. You can still log a workout below.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Other Exercises / Search */}
+      {activePlan ? (
+        <div className="space-y-3">
+          <button
+            onClick={() => setShowAllExercises(!showAllExercises)}
+            className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
+          >
+            <Dumbbell className="w-4 h-4" />
+            <span>All Exercises</span>
+            <motion.div animate={{ rotate: showAllExercises ? 180 : 0 }} transition={{ duration: 0.2 }}>
+              <ChevronDown className="w-4 h-4" />
+            </motion.div>
+            <Badge variant="outline" className="text-xs ml-auto">{otherExercises.length}</Badge>
+          </button>
+
+          <AnimatePresence>
+            {showAllExercises && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden space-y-3"
+              >
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search exercises..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-10 bg-card border-border/50 focus:border-primary/50 transition-colors"
+                  />
+                  {search && (
+                    <button
+                      onClick={() => setSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                {filteredOtherExercises.map((exercise, index) => (
+                  <ExerciseCard
+                    key={exercise.id}
+                    exercise={exercise}
+                    index={index}
+                    getPR={getPR}
+                    getExerciseLogs={getExerciseLogs}
+                    getChartData={getChartData}
+                    expandedExercise={expandedExercise}
+                    setExpandedExercise={setExpandedExercise}
+                    setSelectedExercise={setSelectedExercise}
+                    weightUnit={weightUnit}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      ) : (
+        <>
+          {/* No active plan — show flat search list like before */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search exercises to log..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 bg-card border-border/50 focus:border-primary/50 transition-colors"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <div className="space-y-3">
+            {filteredExercises.map((exercise, index) => (
+              <ExerciseCard
+                key={exercise.id}
+                exercise={exercise}
+                index={index}
+                getPR={getPR}
+                getExerciseLogs={getExerciseLogs}
+                getChartData={getChartData}
+                expandedExercise={expandedExercise}
+                setExpandedExercise={setExpandedExercise}
+                setSelectedExercise={setSelectedExercise}
+                weightUnit={weightUnit}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Log Workout Dialog */}
+      <Dialog open={!!selectedExercise} onOpenChange={() => setSelectedExercise(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              {selectedExercise && (
+                <>
+                  <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center",
+                    getMuscleGroupColor(selectedExercise.muscleGroup).bg
+                  )}>
+                    <ExerciseIcon 
+                      exerciseId={selectedExercise.id}
+                      muscleGroup={selectedExercise.muscleGroup}
+                      className={cn("w-5 h-5", getMuscleGroupColor(selectedExercise.muscleGroup).text)}
+                    />
+                  </div>
+                  Log {selectedExercise.name}
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              Record your sets, reps, and weight for this exercise.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            {selectedExercise && getPR(selectedExercise.id) && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20"
+              >
+                <div className="flex items-center gap-3">
+                  <Trophy className="w-5 h-5 text-amber-500" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Current PR</p>
+                    <p className="text-2xl font-bold text-amber-500">{getPR(selectedExercise.id)?.maxWeight} {weightUnit}</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  Weight
+                  <button
+                    type="button"
+                    onClick={() => setWeightUnit(weightUnit === 'lbs' ? 'kg' : 'lbs')}
+                    className="ml-1.5 px-1.5 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    {weightUnit}
+                  </button>
+                </label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={workoutForm.weight}
+                  onChange={(e) => setWorkoutForm(prev => ({ ...prev, weight: e.target.value }))}
+                  className="text-center text-lg font-semibold bg-secondary/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Reps</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={workoutForm.reps}
+                  onChange={(e) => setWorkoutForm(prev => ({ ...prev, reps: e.target.value }))}
+                  className="text-center text-lg font-semibold bg-secondary/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Sets</label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={workoutForm.sets}
+                  onChange={(e) => setWorkoutForm(prev => ({ ...prev, sets: e.target.value }))}
+                  className="text-center text-lg font-semibold bg-secondary/50"
+                />
+              </div>
+            </div>
+            <Button 
+              onClick={handleLogWorkout} 
+              className="w-full gap-2 h-12 text-base shadow-lg shadow-primary/20"
+              disabled={!workoutForm.weight || !workoutForm.reps || !workoutForm.sets}
+            >
+              <Check className="w-5 h-5" />
+              Log Workout
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

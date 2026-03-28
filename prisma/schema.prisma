@@ -1,0 +1,184 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth.js Models ─────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── App Models ─────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String    @default("Athlete")
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts       Account[]
+  sessions       Session[]
+  exercises      Exercise[]
+  workoutLogs    WorkoutLog[]
+  personalRecords PersonalRecord[]
+  trainingPlans  TrainingPlan[]
+  checkIns       CheckIn[]
+}
+
+model Exercise {
+  id          String   @id @default(cuid())
+  name        String
+  muscleGroup String
+  icon        String   @default("Dumbbell")
+  difficulty  String   @default("beginner")
+  isCustom    Boolean  @default(false)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  userId      String?
+
+  user                 User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutLogs          WorkoutLog[]
+  personalRecords      PersonalRecord[]
+  trainingDayExercises TrainingDayExercise[]
+
+  @@index([userId])
+  @@index([muscleGroup])
+}
+
+model WorkoutLog {
+  id         String   @id @default(cuid())
+  weight     Float
+  reps       Int
+  sets       Int
+  date       DateTime
+  createdAt  DateTime @default(now())
+  exerciseId String
+  userId     String
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([exerciseId])
+  @@index([date])
+}
+
+model PersonalRecord {
+  id         String   @id @default(cuid())
+  maxWeight  Float
+  date       DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  exerciseId String
+  userId     String
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, exerciseId])
+  @@index([userId])
+}
+
+model TrainingPlan {
+  id             String   @id @default(cuid())
+  name           String
+  isActive       Boolean  @default(false)
+  durationWeeks  Int      @default(0)
+  startDate      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  userId         String
+
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  days TrainingDay[]
+
+  @@index([userId])
+}
+
+model TrainingDay {
+  id             String  @id @default(cuid())
+  day            String
+  isRest         Boolean @default(false)
+  trainingPlanId String
+
+  trainingPlan TrainingPlan          @relation(fields: [trainingPlanId], references: [id], onDelete: Cascade)
+  exercises    TrainingDayExercise[]
+
+  @@unique([trainingPlanId, day])
+  @@index([trainingPlanId])
+}
+
+model TrainingDayExercise {
+  id            String @id @default(cuid())
+  order         Int
+  trainingDayId String
+  exerciseId    String
+
+  trainingDay TrainingDay @relation(fields: [trainingDayId], references: [id], onDelete: Cascade)
+  exercise    Exercise    @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@index([trainingDayId])
+}
+
+model CheckIn {
+  id        String   @id @default(cuid())
+  date      String
+  completed Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+}
