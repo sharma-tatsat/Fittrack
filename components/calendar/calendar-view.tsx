@@ -6,6 +6,7 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Check,
+  X,
   Flame,
   Calendar as CalendarIcon,
   Dumbbell,
@@ -30,6 +31,7 @@ import {
   startOfWeek,
   endOfWeek,
   isToday as checkIsToday,
+  isPast,
   addWeeks,
   isBefore,
   isAfter,
@@ -378,6 +380,8 @@ export function CalendarView() {
                 const hasLoggedExercises = workouts.length > 0
                 const isPlanned = isPlannedGymDay(day)
                 const isRest = isPlannedRestDay(day)
+                const isFuture = !isToday && !isPast(day)
+                const isMissed = isPlanned && !hasWorkout && !isToday && isPast(day)
 
                 return (
                   <div key={day.toISOString()} className="flex items-center justify-center py-1">
@@ -385,28 +389,36 @@ export function CalendarView() {
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: index * 0.003 }}
-                      whileHover={{ scale: 1.15 }}
-                      whileTap={{ scale: 0.9 }}
+                      whileHover={!isFuture ? { scale: 1.15 } : undefined}
+                      whileTap={!isFuture ? { scale: 0.9 } : undefined}
                       onClick={() => {
+                        if (isFuture) return
                         playClickSound()
                         toggleCheckIn(format(day, 'yyyy-MM-dd'))
                       }}
                       className={cn(
                         "relative w-10 h-10 rounded-full flex items-center justify-center transition-all",
                         !isCurrentMonth && "opacity-25",
-                        isToday && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                        isToday && (hasWorkout
+                          ? "ring-2 ring-success ring-offset-2 ring-offset-background"
+                          : "ring-2 ring-primary ring-offset-2 ring-offset-background"),
                         hasWorkout 
                           ? "bg-success/25 shadow-sm shadow-success/20" 
-                          : isPlanned
-                            ? "bg-primary/15 border-2 border-primary/40"
-                            : "hover:bg-secondary/50"
+                          : isMissed
+                            ? "bg-muted/40"
+                            : isPlanned
+                              ? "bg-primary/15 border-2 border-primary/40"
+                              : "hover:bg-secondary/50",
+                        isFuture && !hasWorkout && "opacity-50 cursor-default"
                       )}
                     >
                       <span className={cn(
                         "text-sm font-medium leading-none",
-                        isToday && "text-primary font-bold",
-                        hasWorkout && "text-success",
-                        !hasWorkout && isPlanned && "text-primary"
+                        isToday && hasWorkout && "text-success font-bold",
+                        isToday && !hasWorkout && "text-primary font-bold",
+                        !isToday && hasWorkout && "text-success",
+                        !isToday && isMissed && "text-muted-foreground",
+                        !isToday && !hasWorkout && isPlanned && !isMissed && "text-primary"
                       )}>
                         {format(day, 'd')}
                       </span>
@@ -420,7 +432,16 @@ export function CalendarView() {
                           <Check className="w-3 h-3 text-success" />
                         </motion.div>
                       )}
-                      {isPlanned && !hasWorkout && (
+                      {isMissed && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute -bottom-0.5"
+                        >
+                          <X className="w-3 h-3 text-muted-foreground" />
+                        </motion.div>
+                      )}
+                      {isPlanned && !hasWorkout && !isMissed && (
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
@@ -455,6 +476,12 @@ export function CalendarView() {
                 <Dumbbell className="w-3 h-3 text-primary/60" />
               </div>
               <span className="text-muted-foreground">Planned</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-7 h-7 rounded-full bg-muted/40 flex items-center justify-center">
+                <X className="w-3 h-3 text-muted-foreground" />
+              </div>
+              <span className="text-muted-foreground">Missed</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center">

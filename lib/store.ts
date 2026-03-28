@@ -72,6 +72,8 @@ interface FitnessStore {
   // Personal Records
   personalRecords: PersonalRecord[]
   getPR: (exerciseId: string) => PersonalRecord | undefined
+  updatePR: (exerciseId: string, maxWeight: number) => void
+  deletePR: (exerciseId: string) => void
   
   // Training Plans
   trainingPlans: TrainingPlan[]
@@ -202,6 +204,28 @@ export const useFitnessStore = create<FitnessStore>()(
       // Personal Records
       personalRecords: [],
       getPR: (exerciseId) => get().personalRecords.find(pr => pr.exerciseId === exerciseId),
+      updatePR: (exerciseId, maxWeight) => {
+        const date = new Date().toISOString()
+        const existing = get().personalRecords.find(pr => pr.exerciseId === exerciseId)
+        if (existing) {
+          set((state) => ({
+            personalRecords: state.personalRecords.map(pr =>
+              pr.exerciseId === exerciseId ? { ...pr, maxWeight, date } : pr
+            ),
+          }))
+        } else {
+          set((state) => ({
+            personalRecords: [...state.personalRecords, { exerciseId, maxWeight, date }],
+          }))
+        }
+        apiPatch('/api/personal-records', { exerciseId, maxWeight })
+      },
+      deletePR: (exerciseId) => {
+        set((state) => ({
+          personalRecords: state.personalRecords.filter(pr => pr.exerciseId !== exerciseId),
+        }))
+        apiDelete(`/api/personal-records?exerciseId=${exerciseId}`)
+      },
       
       // Training Plans
       trainingPlans: [],
@@ -400,6 +424,7 @@ export const useFitnessStore = create<FitnessStore>()(
           interface DbExerciseRef { exercise: Record<string, unknown>; order: number }
           interface DbDay { day: string; isRest?: boolean; exercises: DbExerciseRef[] }
           interface DbPlan { id: string; name: string; isActive: boolean; durationWeeks?: number; startDate?: string | null; days: DbDay[] }
+          const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
           const mappedPlans: TrainingPlan[] = (plans || []).map((p: DbPlan) => ({
             id: p.id,
             name: p.name,
@@ -411,7 +436,7 @@ export const useFitnessStore = create<FitnessStore>()(
               exercises: (d.exercises || []).map((de: DbExerciseRef) => 
                 (de.exercise as Record<string, unknown>).id as string
               ),
-            })),
+            })).sort((a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day)),
           }))
 
           // Map check-ins

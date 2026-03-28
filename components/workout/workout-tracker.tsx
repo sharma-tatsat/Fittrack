@@ -15,7 +15,9 @@ import {
   Zap,
   Star,
   Calendar,
-  Dumbbell
+  Dumbbell,
+  Pencil,
+  Trash2
 } from 'lucide-react'
 import { useFitnessStore, type Exercise, type PersonalRecord, type WorkoutLog } from '@/lib/store'
 import { ExerciseIcon, getMuscleGroupColor } from '@/lib/exercise-icons'
@@ -23,6 +25,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
   DialogContent,
@@ -220,7 +223,7 @@ function ExerciseCard({
 }
 
 export function WorkoutTracker() {
-  const { exercises, trainingPlans, activeTrainingPlanId, addWorkoutLog, getExerciseLogs, getPR, weightUnit, setWeightUnit } = useFitnessStore()
+  const { exercises, trainingPlans, activeTrainingPlanId, addWorkoutLog, getExerciseLogs, getPR, updatePR, deletePR, weightUnit, setWeightUnit } = useFitnessStore()
   const [search, setSearch] = useState('')
   const [showAllExercises, setShowAllExercises] = useState(false)
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
@@ -232,6 +235,12 @@ export function WorkoutTracker() {
     sets: '',
   })
   const [expandedExercise, setExpandedExercise] = useState<string | null>(null)
+
+  // PR prompt state
+  const [isFirstTime, setIsFirstTime] = useState(false)
+  const [prPromptValue, setPrPromptValue] = useState('')
+  const [editingPR, setEditingPR] = useState(false)
+  const [editPRValue, setEditPRValue] = useState('')
 
   // Determine today's day name
   const todayName = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date())
@@ -328,16 +337,30 @@ export function WorkoutTracker() {
   const handleLogWorkout = () => {
     if (!selectedExercise || !workoutForm.weight || !workoutForm.reps || !workoutForm.sets) return
 
+    const weight = parseFloat(workoutForm.weight)
+    const currentPR = getPR(selectedExercise.id)
+
+    // If user entered a manual PR via the prompt (no existing PR), save it first
+    if (!currentPR && prPromptValue && !isFirstTime) {
+      updatePR(selectedExercise.id, parseFloat(prPromptValue))
+    }
+
+    // If first time, force-set whatever they log as the PR
+    if (isFirstTime && !currentPR) {
+      updatePR(selectedExercise.id, weight)
+    }
+
     const { isNewPR } = addWorkoutLog({
       exerciseId: selectedExercise.id,
-      weight: parseFloat(workoutForm.weight),
+      weight,
       reps: parseInt(workoutForm.reps),
       sets: parseInt(workoutForm.sets),
       date: new Date().toISOString(),
     })
 
-    if (isNewPR) {
-      setNewPRWeight(parseFloat(workoutForm.weight))
+    // Show celebration if it's a new PR (and not first time — first time always sets PR)
+    if (isNewPR && !isFirstTime) {
+      setNewPRWeight(weight)
       setShowPRCelebration(true)
       triggerConfetti()
       setTimeout(() => setShowPRCelebration(false), 4000)
@@ -345,6 +368,22 @@ export function WorkoutTracker() {
 
     setWorkoutForm({ weight: '', reps: '', sets: '' })
     setSelectedExercise(null)
+    setIsFirstTime(false)
+    setPrPromptValue('')
+    setEditingPR(false)
+    setEditPRValue('')
+  }
+
+  const handleSaveEditPR = () => {
+    if (!selectedExercise || !editPRValue) return
+    updatePR(selectedExercise.id, parseFloat(editPRValue))
+    setEditingPR(false)
+    setEditPRValue('')
+  }
+
+  const handleDeletePR = () => {
+    if (!selectedExercise) return
+    deletePR(selectedExercise.id)
   }
 
   const getChartData = (exerciseId: string) => {
@@ -586,7 +625,15 @@ export function WorkoutTracker() {
       )}
 
       {/* Log Workout Dialog */}
-      <Dialog open={!!selectedExercise} onOpenChange={() => setSelectedExercise(null)}>
+      <Dialog open={!!selectedExercise} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedExercise(null)
+          setIsFirstTime(false)
+          setPrPromptValue('')
+          setEditingPR(false)
+          setEditPRValue('')
+        }
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
@@ -611,19 +658,121 @@ export function WorkoutTracker() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
-            {selectedExercise && getPR(selectedExercise.id) && (
+            {/* Existing PR — editable/deletable */}
+            {selectedExercise && getPR(selectedExercise.id) && !editingPR && (
               <motion.div 
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20"
               >
-                <div className="flex items-center gap-3">
-                  <Trophy className="w-5 h-5 text-amber-500" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Current PR</p>
-                    <p className="text-2xl font-bold text-amber-500">{getPR(selectedExercise.id)?.maxWeight} {weightUnit}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Trophy className="w-5 h-5 text-amber-500" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Current PR</p>
+                      <p className="text-2xl font-bold text-amber-500">{getPR(selectedExercise.id)?.maxWeight} {weightUnit}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setEditingPR(true)
+                        setEditPRValue(String(getPR(selectedExercise.id)?.maxWeight ?? ''))
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={handleDeletePR}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
+              </motion.div>
+            )}
+
+            {/* Edit PR inline */}
+            {selectedExercise && editingPR && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20"
+              >
+                <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-amber-500" />
+                  Edit PR
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    placeholder="New PR weight"
+                    value={editPRValue}
+                    onChange={(e) => setEditPRValue(e.target.value)}
+                    className="text-center font-semibold bg-secondary/50"
+                    autoFocus
+                  />
+                  <Button size="sm" onClick={handleSaveEditPR} disabled={!editPRValue}>
+                    <Check className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingPR(false)}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* No PR — prompt to set one or mark first time */}
+            {selectedExercise && !getPR(selectedExercise.id) && !editingPR && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 rounded-xl bg-gradient-to-r from-primary/5 to-transparent border border-primary/20"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-primary" />
+                    {"What's your PR for this exercise?"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 mb-3">
+                  <Switch
+                    checked={isFirstTime}
+                    onCheckedChange={(checked) => {
+                      setIsFirstTime(checked)
+                      if (checked) setPrPromptValue('')
+                    }}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    First time doing this exercise
+                  </span>
+                </div>
+                {!isFirstTime && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                  >
+                    <Input
+                      type="number"
+                      placeholder={`Enter your PR in ${weightUnit}`}
+                      value={prPromptValue}
+                      onChange={(e) => setPrPromptValue(e.target.value)}
+                      className="text-center font-semibold bg-secondary/50"
+                    />
+                  </motion.div>
+                )}
+                {isFirstTime && (
+                  <p className="text-xs text-muted-foreground italic">
+                    Your logged weight will automatically become your PR.
+                  </p>
+                )}
               </motion.div>
             )}
             <div className="grid grid-cols-3 gap-3">
