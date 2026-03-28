@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  outputFileTracingIncludes: {
+    '/api/**': ['./lib/generated/prisma/**/*'],
+  },
   images: {
     unoptimized: true,
   },
