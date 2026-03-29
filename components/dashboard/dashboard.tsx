@@ -102,7 +102,7 @@ export function Dashboard() {
       {/* Header */}
       <motion.div variants={item} className="space-y-2">
         <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-bold text-balance">
+          <h1 className="text-2xl sm:text-3xl font-bold text-balance">
             Welcome back, {user.name}
           </h1>
           {streak >= 7 && (
@@ -120,8 +120,8 @@ export function Dashboard() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <MessageIcon className="w-5 h-5 text-primary" />
-          {randomMessage.text}
+          <MessageIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
+          <span className="text-sm sm:text-base">{randomMessage.text}</span>
         </motion.p>
       </motion.div>
 
@@ -205,23 +205,23 @@ export function Dashboard() {
       {/* Today's Workout */}
       <motion.div variants={item}>
         <Card className="overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gradient-to-r from-primary/5 to-transparent">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 pb-2 bg-gradient-to-r from-primary/5 to-transparent">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                <Zap className="w-5 h-5 text-primary" />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-lg font-semibold">
+                <CardTitle className="text-base sm:text-lg font-semibold">
                   {"Today's Workout"}
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">{dayName}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{dayName}</p>
               </div>
             </div>
             <Button 
               variant="default" 
               size="sm"
               onClick={() => setActiveTab('tracker')}
-              className="gap-2 shadow-lg shadow-primary/20"
+              className="gap-2 shadow-lg shadow-primary/20 w-full sm:w-auto"
             >
               Start Workout
               <ArrowRight className="w-4 h-4" />
@@ -260,27 +260,27 @@ export function Dashboard() {
                       transition={{ delay: index * 0.05 }}
                       whileHover={{ x: 4 }}
                       className={cn(
-                        "flex items-center gap-3 p-3 rounded-xl transition-all cursor-pointer group",
+                        "flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl transition-all cursor-pointer group",
                         "bg-secondary/30 hover:bg-secondary/60",
                         "border border-transparent hover:border-border/50"
                       )}
                       onClick={() => setActiveTab('tracker')}
                     >
                       <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110",
+                        "w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110",
                         colorConfig.bg
                       )}>
                         <ExerciseIcon 
                           exerciseId={exercise.id}
                           muscleGroup={exercise.muscleGroup}
-                          className={cn("w-5 h-5", colorConfig.text)}
+                          className={cn("w-4 h-4 sm:w-5 sm:h-5", colorConfig.text)}
                         />
                       </div>
-                      <div className="flex-1">
-                        <p className="font-medium group-hover:text-primary transition-colors">{exercise.name}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm sm:text-base group-hover:text-primary transition-colors truncate">{exercise.name}</p>
                         <p className="text-xs text-muted-foreground capitalize">{exercise.muscleGroup}</p>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </motion.div>
                   )
                 })}
@@ -326,21 +326,21 @@ export function Dashboard() {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: index * 0.1 }}
                       whileHover={{ scale: 1.01 }}
-                      className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20"
+                      className="flex items-center justify-between p-3 sm:p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                         <div className={cn(
-                          "w-12 h-12 rounded-xl flex items-center justify-center",
+                          "w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0",
                           colorConfig.bg
                         )}>
                           <ExerciseIcon 
                             exerciseId={exercise.id}
                             muscleGroup={exercise.muscleGroup}
-                            className={cn("w-6 h-6", colorConfig.text)}
+                            className={cn("w-5 h-5 sm:w-6 sm:h-6", colorConfig.text)}
                           />
                         </div>
-                        <div>
-                          <p className="font-semibold">{exercise.name}</p>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm sm:text-base truncate">{exercise.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {format(new Date(pr.date), 'MMM d, yyyy')}
                           </p>
@@ -348,7 +348,7 @@ export function Dashboard() {
                       </div>
                       <div className="text-right">
                         <motion.p 
-                          className="text-2xl font-bold text-amber-500"
+                          className="text-xl sm:text-2xl font-bold text-amber-500"
                           animate={{ scale: [1, 1.05, 1] }}
                           transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
                         >
