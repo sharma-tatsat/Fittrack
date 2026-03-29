@@ -361,7 +361,11 @@ export function ProfileSettings() {
               <Button 
                 variant="destructive" 
                 className="gap-2"
-                onClick={() => signOut({ callbackUrl: '/login' })}
+                onClick={() => {
+                  // Clear persisted store data to prevent stale data on next login
+                  localStorage.removeItem('fitness-store')
+                  signOut({ callbackUrl: '/login' })
+                }}
               >
                 <LogOut className="w-4 h-4" />
                 Sign Out

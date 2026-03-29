@@ -1386,7 +1386,7 @@ export function TrainingPlanner() {
                               Add Exercise
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-h-[80vh] overflow-hidden flex flex-col">
+                          <DialogContent className="max-h-[80vh] !overflow-hidden flex flex-col">
                             <DialogHeader>
                               <DialogTitle>Add Exercise to {dayPlan.day}</DialogTitle>
                               <DialogDescription>

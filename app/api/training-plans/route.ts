@@ -128,31 +128,14 @@ export async function PUT(request: Request) {
     await prisma.trainingPlan.update({ where: { id }, data: updateData })
   }
 
-  // For each day: delete old exercises, upsert the day, re-create exercises
-  for (const d of days) {
-    const existingDay = existing.days.find((ed) => ed.day === d.day)
+  // Replace all days atomically — delete everything and re-create
+  await prisma.$transaction(async (tx) => {
+    // Delete all existing days (cascade deletes TrainingDayExercise)
+    await tx.trainingDay.deleteMany({ where: { trainingPlanId: id } })
 
-    if (existingDay) {
-      // Delete old exercise links
-      await prisma.trainingDayExercise.deleteMany({
-        where: { trainingDayId: existingDay.id },
-      })
-      // Update day (isRest) and create new exercise links
-      await prisma.trainingDay.update({
-        where: { id: existingDay.id },
-        data: {
-          isRest: d.isRest ?? false,
-          exercises: {
-            create: d.exercises.map((exerciseId, index) => ({
-              exerciseId,
-              order: index,
-            })),
-          },
-        },
-      })
-    } else {
-      // Create new day
-      await prisma.trainingDay.create({
+    // Re-create all days with exercises
+    for (const d of days) {
+      await tx.trainingDay.create({
         data: {
           day: d.day,
           isRest: d.isRest ?? false,
@@ -166,7 +149,7 @@ export async function PUT(request: Request) {
         },
       })
     }
-  }
+  })
 
   return NextResponse.json({ message: 'Plan updated' })
 }

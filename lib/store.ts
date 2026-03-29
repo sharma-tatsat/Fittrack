@@ -124,6 +124,9 @@ function apiDelete(url: string) {
   fetch(url, { method: 'DELETE' }).catch(() => {})
 }
 
+// Debounce timer for training plan updates to prevent rapid-fire PUTs
+let planUpdateTimer: ReturnType<typeof setTimeout> | null = null
+
 export const useFitnessStore = create<FitnessStore>()(
   persist(
     (set, get) => ({
@@ -277,25 +280,28 @@ export const useFitnessStore = create<FitnessStore>()(
           )
         }))
 
-        // Sync to server — send full plan days so the backend can reconcile
-        const updated = get().trainingPlans.find(p => p.id === id)
-        if (updated && !id.startsWith('plan-')) {
-          fetch('/api/training-plans', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: updated.id,
-              name: updated.name,
-              durationWeeks: updated.durationWeeks,
-              startDate: updated.startDate,
-              days: updated.days.map(d => ({
-                day: d.day,
-                isRest: d.isRest ?? false,
-                exercises: d.exercises,
-              })),
-            }),
-          }).catch(() => {})
-        }
+        // Debounce server sync to prevent rapid-fire PUTs (e.g. drag reorder)
+        if (planUpdateTimer) clearTimeout(planUpdateTimer)
+        planUpdateTimer = setTimeout(() => {
+          const updated = get().trainingPlans.find(p => p.id === id)
+          if (updated && !id.startsWith('plan-')) {
+            fetch('/api/training-plans', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: updated.id,
+                name: updated.name,
+                durationWeeks: updated.durationWeeks,
+                startDate: updated.startDate,
+                days: updated.days.map(d => ({
+                  day: d.day,
+                  isRest: d.isRest ?? false,
+                  exercises: d.exercises,
+                })),
+              }),
+            }).catch(() => {})
+          }
+        }, 500)
       },
       deleteTrainingPlan: (id) => {
         set((state) => ({
@@ -454,62 +460,16 @@ export const useFitnessStore = create<FitnessStore>()(
             completed: c.completed as boolean,
           }))
 
-          // Preserve local plans if server returns empty (e.g. save failed earlier)
-          const localPlans = get().trainingPlans
-          const localActiveId = get().activeTrainingPlanId
-          const hasServerPlans = mappedPlans.length > 0
-
           set({
             isLoaded: true,
             user: { name: user.name || 'Athlete', email: user.email || '' },
             exercises: mappedExercises.length > 0 ? mappedExercises : get().exercises,
             workoutLogs: mappedLogs,
             personalRecords: mappedPRs,
-            trainingPlans: hasServerPlans ? mappedPlans : localPlans,
-            activeTrainingPlanId: hasServerPlans
-              ? (activePlan ? (activePlan as DbPlan).id : null)
-              : localActiveId,
-            checkIns: mappedCheckIns.length > 0 ? mappedCheckIns : get().checkIns,
+            trainingPlans: mappedPlans,
+            activeTrainingPlanId: activePlan ? (activePlan as DbPlan).id : null,
+            checkIns: mappedCheckIns,
           })
-
-          // Re-save local-only plans to server
-          if (!hasServerPlans && localPlans.length > 0) {
-            for (const plan of localPlans) {
-              if (plan.id.startsWith('plan-')) {
-                fetch('/api/training-plans', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    name: plan.name,
-                    durationWeeks: plan.durationWeeks,
-                    startDate: plan.startDate,
-                    days: plan.days.map(d => ({
-                      day: d.day,
-                      isRest: d.isRest ?? false,
-                      exercises: d.exercises,
-                    })),
-                  }),
-                })
-                  .then(r => r.ok ? r.json() : null)
-                  .then(saved => {
-                    if (saved) {
-                      set(state => ({
-                        trainingPlans: state.trainingPlans.map(p =>
-                          p.id === plan.id ? { ...p, id: saved.id } : p
-                        ),
-                        activeTrainingPlanId: state.activeTrainingPlanId === plan.id ? saved.id : state.activeTrainingPlanId,
-                      }))
-                      fetch(`/api/training-plans/${saved.id}/activate`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: '{}',
-                      }).catch(() => {})
-                    }
-                  })
-                  .catch(() => {})
-              }
-            }
-          }
         } catch {
           // If server is unreachable, keep whatever's in localStorage
           set({ isLoaded: true })
