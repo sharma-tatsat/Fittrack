@@ -36,7 +36,9 @@ import {
   Edit3,
   AlertTriangle,
   Check,
-  Timer
+  Timer,
+  Save,
+  Loader2
 } from 'lucide-react'
 import { useFitnessStore, type Exercise } from '@/lib/store'
 import { ExerciseIcon, getMuscleGroupColor } from '@/lib/exercise-icons'
@@ -325,10 +327,13 @@ export function TrainingPlanner() {
     trainingPlans, 
     activeTrainingPlanId, 
     updateTrainingPlan,
+    saveTrainingPlan,
     addTrainingPlan,
     deleteTrainingPlan,
-    setActiveTrainingPlan
+    setActiveTrainingPlan,
+    planDirty
   } = useFitnessStore()
+  const [isSaving, setIsSaving] = useState(false)
   
   const [expandedDay, setExpandedDay] = useState<string | null>('Monday')
   const [isAddingPlan, setIsAddingPlan] = useState(false)
@@ -573,6 +578,8 @@ export function TrainingPlanner() {
         }),
       })
     }
+    // Auto-save rest day toggle
+    setTimeout(() => saveTrainingPlan(activePlan.id), 0)
   }
 
   const handleSaveScheduleEdit = () => {
@@ -603,6 +610,7 @@ export function TrainingPlanner() {
       }),
     })
     setIsEditingSchedule(false)
+    if (activePlan.id) saveTrainingPlan(activePlan.id)
   }
 
   const handleChangeSplit = (day: string, splitLabel: string) => {
@@ -617,6 +625,8 @@ export function TrainingPlanner() {
         d.day === day ? { ...d, exercises: resolvedIds, isRest: false } : d
       ),
     })
+    // Save immediately — split change is an explicit action
+    setTimeout(() => saveTrainingPlan(activePlan.id), 0)
   }
 
   const handleSaveDurationEdit = () => {
@@ -627,6 +637,7 @@ export function TrainingPlanner() {
       startDate: format(planStartDate, 'yyyy-MM-dd'),
     })
     setIsEditingDuration(false)
+    saveTrainingPlan(activePlan.id)
   }
 
   const activeExercise = activeId ? exercises.find(e => e.id === activeId) : null
@@ -706,6 +717,27 @@ export function TrainingPlanner() {
               ))}
             </SelectContent>
           </Select>
+          {planDirty && activePlan && (
+            <Button
+              size="sm"
+              variant="default"
+              className="gap-1.5 shadow-lg shadow-primary/20"
+              disabled={isSaving}
+              onClick={async () => {
+                if (!activePlan) return
+                setIsSaving(true)
+                await saveTrainingPlan(activePlan.id)
+                setIsSaving(false)
+              }}
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save'}</span>
+            </Button>
+          )}
           <Dialog open={isAddingPlan} onOpenChange={(open) => { setIsAddingPlan(open); if (!open) { setSelectedTemplate(null); setNewPlanName(''); setRestDays(new Set(['Saturday', 'Sunday'])); setPlanWeeks(0); setDurationMode('ongoing'); setDurationValue(''); setIsCustomDuration(false); setPlanStartDate(new Date()); } }}>
             <DialogTrigger asChild>
               <Button size="icon" variant="outline" className="shrink-0">

@@ -80,8 +80,10 @@ interface FitnessStore {
   activeTrainingPlanId: string | null
   addTrainingPlan: (plan: Omit<TrainingPlan, 'id'>) => void
   updateTrainingPlan: (id: string, plan: Partial<TrainingPlan>) => void
+  saveTrainingPlan: (id: string) => Promise<boolean>
   deleteTrainingPlan: (id: string) => void
   setActiveTrainingPlan: (id: string | null) => void
+  planDirty: boolean
   
   // Check-ins
   checkIns: CheckIn[]
@@ -124,50 +126,7 @@ function apiDelete(url: string) {
   fetch(url, { method: 'DELETE' }).catch(() => {})
 }
 
-// Debounce timer for training plan updates to prevent rapid-fire PUTs
-let planUpdateTimer: ReturnType<typeof setTimeout> | null = null
-let pendingPlanId: string | null = null
-
-// Flush any pending plan update before page unload
-function flushPendingPlanUpdate() {
-  if (planUpdateTimer && pendingPlanId) {
-    clearTimeout(planUpdateTimer)
-    planUpdateTimer = null
-    const state = useFitnessStore.getState()
-    const updated = state.trainingPlans.find(p => p.id === pendingPlanId)
-    if (updated && !pendingPlanId.startsWith('plan-')) {
-      const body = JSON.stringify({
-        id: updated.id,
-        name: updated.name,
-        durationWeeks: updated.durationWeeks,
-        startDate: updated.startDate,
-        days: updated.days.map(d => ({
-          day: d.day,
-          isRest: d.isRest ?? false,
-          exercises: d.exercises,
-        })),
-      })
-      // Use keepalive fetch so it completes even during page unload
-      fetch('/api/training-plans', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-        keepalive: true,
-      }).catch(() => {})
-    }
-    pendingPlanId = null
-  }
-}
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', flushPendingPlanUpdate)
-  // Also flush on visibility change (e.g. switching tabs on mobile)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-      flushPendingPlanUpdate()
-    }
-  })
-}
+// No debounce — explicit save is used instead
 
 export const useFitnessStore = create<FitnessStore>()(
   persist(
@@ -278,6 +237,7 @@ export const useFitnessStore = create<FitnessStore>()(
       // Training Plans
       trainingPlans: [],
       activeTrainingPlanId: null,
+      planDirty: false,
       addTrainingPlan: (plan) => {
         const tempId = `plan-${Date.now()}`
         const newPlan: TrainingPlan = {
@@ -319,34 +279,37 @@ export const useFitnessStore = create<FitnessStore>()(
         set((state) => ({
           trainingPlans: state.trainingPlans.map(plan => 
             plan.id === id ? { ...plan, ...updates } : plan
-          )
+          ),
+          planDirty: true,
         }))
-
-        // Debounce server sync to prevent rapid-fire PUTs (e.g. drag reorder)
-        if (planUpdateTimer) clearTimeout(planUpdateTimer)
-        pendingPlanId = id
-        planUpdateTimer = setTimeout(() => {
-          pendingPlanId = null
-          planUpdateTimer = null
-          const updated = get().trainingPlans.find(p => p.id === id)
-          if (updated && !id.startsWith('plan-')) {
-            fetch('/api/training-plans', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                id: updated.id,
-                name: updated.name,
-                durationWeeks: updated.durationWeeks,
-                startDate: updated.startDate,
-                days: updated.days.map(d => ({
-                  day: d.day,
-                  isRest: d.isRest ?? false,
-                  exercises: d.exercises,
-                })),
-              }),
-            }).catch(() => {})
+      },
+      saveTrainingPlan: async (id) => {
+        const updated = get().trainingPlans.find(p => p.id === id)
+        if (!updated || id.startsWith('plan-')) return false
+        try {
+          const res = await fetch('/api/training-plans', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: updated.id,
+              name: updated.name,
+              durationWeeks: updated.durationWeeks,
+              startDate: updated.startDate,
+              days: updated.days.map(d => ({
+                day: d.day,
+                isRest: d.isRest ?? false,
+                exercises: d.exercises,
+              })),
+            }),
+          })
+          if (res.ok) {
+            set({ planDirty: false })
+            return true
           }
-        }, 500)
+          return false
+        } catch {
+          return false
+        }
       },
       deleteTrainingPlan: (id) => {
         set((state) => ({
