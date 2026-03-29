@@ -267,7 +267,7 @@ export function CalendarView() {
             whileHover={{ scale: 1.02, y: -2 }}
           >
             <Card className={cn(
-              "bg-gradient-to-br overflow-hidden",
+              "bg-gradient-to-br overflow-hidden h-full",
               stat.gradient
             )}>
               <CardContent className="p-4">
@@ -275,14 +275,14 @@ export function CalendarView() {
                   <motion.div 
                     whileHover={{ rotate: 15 }}
                     className={cn(
-                      "w-11 h-11 rounded-xl flex items-center justify-center",
+                      "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
                       `bg-${stat.color}/20`
                     )}
                   >
                     <stat.icon className={cn("w-5 h-5", stat.textColor)} />
                   </motion.div>
-                  <div>
-                    <p className="text-2xl font-bold">{stat.value}</p>
+                  <div className="min-w-0">
+                    <p className="text-xl font-bold truncate">{stat.value}</p>
                     <p className="text-xs text-muted-foreground">{stat.label}</p>
                   </div>
                 </div>
