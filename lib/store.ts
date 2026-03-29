@@ -448,9 +448,11 @@ export const useFitnessStore = create<FitnessStore>()(
             days: (p.days || []).map((d: DbDay) => ({
               day: d.day,
               isRest: d.isRest ?? false,
-              exercises: (d.exercises || []).map((de: DbExerciseRef) => 
-                (de.exercise as Record<string, unknown>).id as string
-              ),
+              exercises: (d.exercises || [])
+                .sort((a, b) => a.order - b.order)
+                .map((de: DbExerciseRef) => 
+                  (de.exercise as Record<string, unknown>).id as string
+                ),
             })).sort((a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day)),
           }))
 
