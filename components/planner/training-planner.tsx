@@ -1386,14 +1386,14 @@ export function TrainingPlanner() {
                               Add Exercise
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-h-[80vh] !overflow-hidden flex flex-col">
-                            <DialogHeader>
+                          <DialogContent className="max-h-[80dvh] !overflow-hidden flex flex-col">
+                            <DialogHeader className="shrink-0">
                               <DialogTitle>Add Exercise to {dayPlan.day}</DialogTitle>
                               <DialogDescription>
                                 Select an exercise to add to your training plan.
                               </DialogDescription>
                             </DialogHeader>
-                            <div className="mt-2">
+                            <div className="mt-2 shrink-0">
                               <Input
                                 placeholder="Search exercises..."
                                 value={exerciseSearch}
@@ -1401,7 +1401,7 @@ export function TrainingPlanner() {
                                 className="bg-secondary/50"
                               />
                             </div>
-                            <div className="space-y-2 pt-4 overflow-y-auto flex-1">
+                            <div className="space-y-2 pt-2 overflow-y-auto flex-1 overscroll-contain">
                               {exercises
                                 .filter(e => !dayPlan.exercises.includes(e.id))
                                 .filter(e => e.name.toLowerCase().includes(exerciseSearch.toLowerCase()))
