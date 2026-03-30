@@ -396,15 +396,16 @@ export function TrainingPlanner() {
       const newIndex = dayPlan.exercises.indexOf(over.id as string)
 
       const newExercises = arrayMove(dayPlan.exercises, oldIndex, newIndex)
-      
+
       updateTrainingPlan(activePlan.id, {
-        days: activePlan.days.map(d => 
+        days: activePlan.days.map(d =>
           d.day === day ? { ...d, exercises: newExercises } : d
         )
       })
-    }
       // Immediately persist the new order to the backend
-      setTimeout(() => saveTrainingPlan(activePlan.id), 0)
+      setTimeout(() => {
+        if (activePlan) saveTrainingPlan(activePlan.id)
+      }, 0)
     }
 
   const handleAddExercise = (day: string, exerciseId: string) => {
