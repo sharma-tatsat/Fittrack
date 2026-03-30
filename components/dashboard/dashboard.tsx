@@ -206,11 +206,11 @@ export function Dashboard() {
       <motion.div variants={item}>
         <Card className="overflow-hidden">
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 pb-2 bg-gradient-to-r from-primary/5 to-transparent">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 h-16 sm:h-20 min-h-[3.5rem] w-full">
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/20 flex items-center justify-center">
                 <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               </div>
-              <div>
+              <div className="flex flex-col justify-center h-full">
                 <CardTitle className="text-base sm:text-lg font-semibold">
                   {"Today's Workout"}
                 </CardTitle>
@@ -306,11 +306,15 @@ export function Dashboard() {
       {recentPRs.length > 0 && (
         <motion.div variants={item}>
           <Card className="overflow-hidden">
-            <CardHeader className="pb-2 bg-gradient-to-r from-amber-500/10 to-transparent">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <CardHeader className="flex items-center min-h-[3.5rem] h-16 sm:h-20 bg-gradient-to-r from-amber-500/10 to-transparent">
+              <div className="flex items-center gap-2 h-full">
                 <Trophy className="w-5 h-5 text-amber-500" />
-                Recent Personal Records
-              </CardTitle>
+                <div className="flex flex-col justify-center h-full">
+                  <CardTitle className="text-lg font-semibold">
+                    Recent Personal Records
+                  </CardTitle>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="pt-4">
               <div className="space-y-3">

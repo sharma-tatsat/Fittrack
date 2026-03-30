@@ -403,7 +403,9 @@ export function TrainingPlanner() {
         )
       })
     }
-  }
+      // Immediately persist the new order to the backend
+      setTimeout(() => saveTrainingPlan(activePlan.id), 0)
+    }
 
   const handleAddExercise = (day: string, exerciseId: string) => {
     if (!activePlan) return
