@@ -300,6 +300,8 @@ function SortableExerciseItem({
   )
 }
 
+export default TrainingPlanner;
+
 function DraggableExerciseOverlay({ exercise }: { exercise: Exercise }) {
   const colorConfig = getMuscleGroupColor(exercise.muscleGroup)
   
