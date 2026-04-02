@@ -404,11 +404,13 @@ export function TrainingPlanner() {
           d.day === day ? { ...d, exercises: newExercises } : d
         )
       })
+
       // Immediately persist the new order to the backend
       setTimeout(() => {
         if (activePlan) saveTrainingPlan(activePlan.id)
       }, 0)
     }
+  }
 
   const handleAddExercise = (day: string, exerciseId: string) => {
     if (!activePlan) return
