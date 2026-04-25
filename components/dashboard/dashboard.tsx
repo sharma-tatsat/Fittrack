@@ -53,6 +53,7 @@ export function Dashboard() {
     trainingPlans,
     activeTrainingPlanId,
     checkIns,
+    weightUnit,
     setActiveTab 
   } = useFitnessStore()
   
@@ -306,11 +307,13 @@ export function Dashboard() {
       {recentPRs.length > 0 && (
         <motion.div variants={item}>
           <Card className="overflow-hidden">
-            <CardHeader className="pb-2 bg-gradient-to-r from-amber-500/10 to-transparent">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <CardHeader className="flex items-center justify-between gap-2 py-4 bg-gradient-to-r from-amber-500/10 to-transparent">
+              <div className="flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-amber-500" />
-                Recent Personal Records
-              </CardTitle>
+                <CardTitle className="text-lg font-semibold">
+                  Recent Personal Records
+                </CardTitle>
+              </div>
             </CardHeader>
             <CardContent className="pt-4">
               <div className="space-y-3">
@@ -352,7 +355,7 @@ export function Dashboard() {
                           animate={{ scale: [1, 1.05, 1] }}
                           transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
                         >
-                          {pr.maxWeight}
+                          {weightUnit === 'kg' ? Math.round(pr.maxWeight * 2.20462) : pr.maxWeight}
                         </motion.p>
                         <p className="text-xs text-muted-foreground">lbs</p>
                       </div>
