@@ -114,6 +114,7 @@ model WorkoutLog {
 model PersonalRecord {
   id         String   @id @default(cuid())
   maxWeight  Float
+  unit       String   @default("lbs")
   date       DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

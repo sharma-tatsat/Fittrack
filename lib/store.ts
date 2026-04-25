@@ -25,6 +25,7 @@ export interface WorkoutLog {
 export interface PersonalRecord {
   exerciseId: string
   maxWeight: number
+  unit: 'lbs' | 'kg'
   date: string
 }
 
@@ -72,7 +73,7 @@ interface FitnessStore {
   // Personal Records
   personalRecords: PersonalRecord[]
   getPR: (exerciseId: string) => PersonalRecord | undefined
-  updatePR: (exerciseId: string, maxWeight: number) => void
+  updatePR: (exerciseId: string, maxWeight: number, unit: 'lbs' | 'kg') => void
   deletePR: (exerciseId: string) => void
   
   // Training Plans
@@ -124,6 +125,11 @@ function apiPatch(url: string, body: unknown) {
 
 function apiDelete(url: string) {
   fetch(url, { method: 'DELETE' }).catch(() => {})
+}
+
+function convertWeight(weight: number, from: 'lbs' | 'kg', to: 'lbs' | 'kg') {
+  if (from === to) return weight
+  return from === 'lbs' ? weight / 2.20462 : weight * 2.20462
 }
 
 // No debounce — explicit save is used instead
@@ -178,13 +184,16 @@ export const useFitnessStore = create<FitnessStore>()(
         }
         
         const currentPR = get().personalRecords.find(pr => pr.exerciseId === log.exerciseId)
-        const isNewPR = !currentPR || log.weight > currentPR.maxWeight
+        const currentPRValue = currentPR
+          ? convertWeight(currentPR.maxWeight, currentPR.unit, get().weightUnit)
+          : undefined
+        const isNewPR = !currentPR || log.weight > (currentPRValue ?? -Infinity)
         
         if (isNewPR) {
           set((state) => ({
             personalRecords: [
               ...state.personalRecords.filter(pr => pr.exerciseId !== log.exerciseId),
-              { exerciseId: log.exerciseId, maxWeight: log.weight, date: log.date }
+              { exerciseId: log.exerciseId, maxWeight: log.weight, unit: get().weightUnit, date: log.date }
             ]
           }))
         }
@@ -211,21 +220,21 @@ export const useFitnessStore = create<FitnessStore>()(
       // Personal Records
       personalRecords: [],
       getPR: (exerciseId) => get().personalRecords.find(pr => pr.exerciseId === exerciseId),
-      updatePR: (exerciseId, maxWeight) => {
+      updatePR: (exerciseId, maxWeight, unit) => {
         const date = new Date().toISOString()
         const existing = get().personalRecords.find(pr => pr.exerciseId === exerciseId)
         if (existing) {
           set((state) => ({
             personalRecords: state.personalRecords.map(pr =>
-              pr.exerciseId === exerciseId ? { ...pr, maxWeight, date } : pr
+              pr.exerciseId === exerciseId ? { ...pr, maxWeight, unit, date } : pr
             ),
           }))
         } else {
           set((state) => ({
-            personalRecords: [...state.personalRecords, { exerciseId, maxWeight, date }],
+            personalRecords: [...state.personalRecords, { exerciseId, maxWeight, unit, date }],
           }))
         }
-        apiPatch('/api/personal-records', { exerciseId, maxWeight })
+        apiPatch('/api/personal-records', { exerciseId, maxWeight, unit })
       },
       deletePR: (exerciseId) => {
         set((state) => ({
@@ -439,6 +448,7 @@ export const useFitnessStore = create<FitnessStore>()(
           const mappedPRs: PersonalRecord[] = (prs || []).map((p: Record<string, unknown>) => ({
             exerciseId: p.exerciseId as string,
             maxWeight: p.maxWeight as number,
+            unit: (p.unit as 'lbs' | 'kg') ?? 'lbs',
             date: typeof p.date === 'string' ? p.date.split('T')[0] : String(p.date),
           }))
 

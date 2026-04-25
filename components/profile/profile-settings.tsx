@@ -81,8 +81,11 @@ export function ProfileSettings() {
     .sort(([,a], [,b]) => b - a)[0]?.[0] || 'None yet'
 
   // Find best PR
+  const convertToLbs = (pr: typeof personalRecords[0]) =>
+    pr.unit === 'kg' ? pr.maxWeight * 2.20462 : pr.maxWeight
+
   const bestPR = personalRecords.reduce((best, pr) => {
-    if (!best || pr.maxWeight > best.maxWeight) return pr
+    if (!best || convertToLbs(pr) > convertToLbs(best)) return pr
     return best
   }, null as typeof personalRecords[0] | null)
 
@@ -271,7 +274,7 @@ export function ProfileSettings() {
                   <div>
                     <p className="font-medium">Best PR</p>
                     <p className="text-sm text-muted-foreground">
-                      {bestPRExercise.name} - {bestPR.maxWeight} lbs
+                      {bestPRExercise.name} - {bestPR.maxWeight} {bestPR.unit}
                     </p>
                   </div>
                 </div>

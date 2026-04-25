@@ -19,6 +19,7 @@ export async function GET() {
 const updateSchema = z.object({
   exerciseId: z.string().min(1),
   maxWeight: z.number().positive(),
+  unit: z.enum(['lbs', 'kg']),
 })
 
 export async function PATCH(request: Request) {
@@ -32,7 +33,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
   }
 
-  const { exerciseId, maxWeight } = parsed.data
+  const { exerciseId, maxWeight, unit } = parsed.data
 
   // Verify exercise belongs to user
   const exercise = await prisma.exercise.findFirst({
@@ -44,8 +45,8 @@ export async function PATCH(request: Request) {
 
   const record = await prisma.personalRecord.upsert({
     where: { userId_exerciseId: { userId, exerciseId } },
-    create: { exerciseId, userId, maxWeight, date: new Date() },
-    update: { maxWeight, date: new Date() },
+    create: { exerciseId, userId, maxWeight, unit, date: new Date() },
+    update: { maxWeight, unit, date: new Date() },
   })
 
   return NextResponse.json(record)

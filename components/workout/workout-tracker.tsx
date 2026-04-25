@@ -138,7 +138,7 @@ function ExerciseCard({
                       {pr && (
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Trophy className="w-3 h-3 text-amber-500" />
-                          <span className="text-primary font-semibold">{pr.maxWeight} {weightUnit}</span>
+                          <span className="text-primary font-semibold">{pr.maxWeight} {pr.unit}</span>
                         </span>
                       )}
                     </div>
@@ -218,7 +218,7 @@ function ExerciseCard({
                     {pr && (
                       <span className="flex items-center gap-1 text-amber-500">
                         <Trophy className="w-4 h-4" />
-                        Best: {pr.maxWeight} {weightUnit}
+                        Best: {pr.maxWeight} {pr.unit}
                       </span>
                     )}
                   </div>
@@ -364,12 +364,12 @@ export function WorkoutTracker() {
 
     // If user entered a manual PR via the prompt (no existing PR), save it first
     if (!currentPR && prPromptValue && !isFirstTime) {
-      updatePR(selectedExercise.id, parseFloat(prPromptValue))
+      updatePR(selectedExercise.id, parseFloat(prPromptValue), weightUnit)
     }
 
     // If first time, force-set whatever they log as the PR
     if (isFirstTime && !currentPR) {
-      updatePR(selectedExercise.id, weight)
+      updatePR(selectedExercise.id, weight, weightUnit)
     }
 
     const { isNewPR } = addWorkoutLog({
@@ -398,7 +398,7 @@ export function WorkoutTracker() {
 
   const handleSaveEditPR = () => {
     if (!selectedExercise || !editPRValue) return
-    updatePR(selectedExercise.id, parseFloat(editPRValue))
+    updatePR(selectedExercise.id, parseFloat(editPRValue), weightUnit)
     setEditingPR(false)
     setEditPRValue('')
   }
@@ -710,7 +710,7 @@ export function WorkoutTracker() {
                     <Trophy className="w-5 h-5 text-amber-500" />
                     <div>
                       <p className="text-sm text-muted-foreground">Current PR</p>
-                      <p className="text-2xl font-bold text-amber-500">{getPR(selectedExercise.id)?.maxWeight} {weightUnit}</p>
+                      <p className="text-2xl font-bold text-amber-500">{getPR(selectedExercise.id)?.maxWeight} {getPR(selectedExercise.id)?.unit}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">

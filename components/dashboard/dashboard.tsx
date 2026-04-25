@@ -355,9 +355,9 @@ export function Dashboard() {
                           animate={{ scale: [1, 1.05, 1] }}
                           transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
                         >
-                          {weightUnit === 'kg' ? Math.round(pr.maxWeight / 2.20462) : pr.maxWeight}
+                          {pr.maxWeight}
                         </motion.p>
-                        <p className="text-xs text-muted-foreground">{weightUnit}</p>
+                        <p className="text-xs text-muted-foreground">{pr.unit}</p>
                       </div>
                     </motion.div>
                   )

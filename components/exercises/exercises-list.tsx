@@ -350,7 +350,7 @@ export function ExercisesList() {
                                   >
                                     <TrendingUp className="w-3 h-3 text-primary" />
                                     <span className="text-muted-foreground">PR:</span>
-                                    <span className="text-primary font-bold">{pr.maxWeight} lbs</span>
+                                    <span className="text-primary font-bold">{pr.maxWeight} {pr.unit}</span>
                                   </motion.div>
                                 )}
                               </div>
