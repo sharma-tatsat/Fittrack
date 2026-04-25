@@ -205,12 +205,12 @@ export function Dashboard() {
       {/* Today's Workout */}
       <motion.div variants={item}>
         <Card className="overflow-hidden">
-          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 pb-2 bg-gradient-to-r from-primary/5 to-transparent">
-            <div className="flex items-center gap-3">
+          <CardHeader className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 py-4 bg-gradient-to-r from-primary/5 via-primary/10 to-transparent">
+            <div className="flex items-center gap-3 w-full">
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/20 flex items-center justify-center">
                 <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               </div>
-              <div>
+              <div className="flex-1">
                 <CardTitle className="text-base sm:text-lg font-semibold">
                   {"Today's Workout"}
                 </CardTitle>
