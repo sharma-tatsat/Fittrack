@@ -483,7 +483,7 @@ export const useFitnessStore = create<FitnessStore>()(
           set({
             isLoaded: true,
             user: { name: user.name || 'Athlete', email: user.email || '' },
-            exercises: mappedExercises.length > 0 ? mappedExercises : get().exercises,
+            exercises: mappedExercises,
             workoutLogs: mappedLogs,
             personalRecords: mappedPRs,
             trainingPlans: mappedPlans,

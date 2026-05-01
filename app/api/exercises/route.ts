@@ -1,16 +1,27 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getAuthUserId } from '@/lib/api-auth'
+import { getDefaultExercises } from '@/lib/default-exercises'
 import { z } from 'zod'
 
 export async function GET() {
   const userId = await getAuthUserId()
   if (userId instanceof NextResponse) return userId
 
-  const exercises = await prisma.exercise.findMany({
+  let exercises = await prisma.exercise.findMany({
     where: { userId },
     orderBy: [{ muscleGroup: 'asc' }, { name: 'asc' }],
   })
+
+  // Auto-seed default exercises for users who have none (e.g. signed up before seeding existed)
+  if (exercises.length === 0) {
+    const defaults = getDefaultExercises(userId)
+    await prisma.exercise.createMany({ data: defaults })
+    exercises = await prisma.exercise.findMany({
+      where: { userId },
+      orderBy: [{ muscleGroup: 'asc' }, { name: 'asc' }],
+    })
+  }
 
   return NextResponse.json(exercises)
 }
