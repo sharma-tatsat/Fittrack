@@ -148,8 +148,8 @@ export function ProfileSettings() {
                 </label>
                 <Input
                   value={editedUser.name}
-                  onChange={(e) => setEditedUser(prev => ({ ...prev, name: e.target.value }))}
-                  className="bg-secondary/50"
+                  disabled
+                  className="bg-secondary/50 opacity-60 cursor-not-allowed"
                 />
               </div>
 
@@ -161,21 +161,10 @@ export function ProfileSettings() {
                 <Input
                   type="email"
                   value={editedUser.email}
-                  onChange={(e) => setEditedUser(prev => ({ ...prev, email: e.target.value }))}
-                  className="bg-secondary/50"
+                  disabled
+                  className="bg-secondary/50 opacity-60 cursor-not-allowed"
                 />
               </div>
-
-              <Button 
-                onClick={handleSave}
-                className={cn(
-                  "w-full gap-2 transition-all",
-                  saved && "bg-success text-success-foreground"
-                )}
-              >
-                <Save className="w-4 h-4" />
-                {saved ? 'Saved!' : 'Save Changes'}
-              </Button>
             </div>
           </CardContent>
         </Card>

@@ -339,14 +339,14 @@ export function CalendarView() {
 
       {/* Calendar */}
       <Card className="overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gradient-to-r from-primary/5 to-transparent">
+        <CardHeader className="flex flex-row items-center justify-between py-3 bg-gradient-to-r from-primary/5 to-transparent">
           <div className="flex items-center gap-2 sm:gap-3">
-            <CardTitle className="text-lg sm:text-xl font-bold">
+            <CardTitle className="text-lg sm:text-xl font-bold leading-none">
               {format(currentMonth, 'MMM yyyy')}
             </CardTitle>
             <div className="hidden sm:flex items-center gap-1 text-muted-foreground">
               <MotivationIcon className="w-4 h-4 text-primary" />
-              <span className="text-xs">{motivation.text}</span>
+              <span className="text-xs leading-none">{motivation.text}</span>
             </div>
           </div>
           <div className="flex items-center gap-1">
