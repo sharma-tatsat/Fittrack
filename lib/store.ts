@@ -398,6 +398,16 @@ export const useFitnessStore = create<FitnessStore>()(
 
       // Load all data from server APIs into the store
       loadFromServer: async () => {
+        // Helper: safely parse JSON from a response, returning fallback on failure
+        async function safeJson<T>(res: Response, fallback: T): Promise<T> {
+          try {
+            if (!res.ok) return fallback
+            return await res.json()
+          } catch {
+            return fallback
+          }
+        }
+
         try {
           const [userRes, exercisesRes, workoutsRes, prsRes, plansRes, checkInsRes] =
             await Promise.all([
@@ -409,20 +419,19 @@ export const useFitnessStore = create<FitnessStore>()(
               fetch('/api/check-ins'),
             ])
 
-          // If any returns 401, user's not logged in — skip
+          // If user endpoint returns non-OK, user's not logged in — skip
           if (!userRes.ok) {
             set({ isLoaded: true })
             return
           }
 
-          const [user, exercises, workouts, prs, plans, checkIns] = await Promise.all([
-            userRes.json(),
-            exercisesRes.json(),
-            workoutsRes.json(),
-            prsRes.json(),
-            plansRes.json(),
-            checkInsRes.json(),
-          ])
+          // Parse each response independently so one failure doesn't crash everything
+          const user = await safeJson(userRes, { name: 'Athlete', email: '' })
+          const exercises = await safeJson<Record<string, unknown>[]>(exercisesRes, [])
+          const workouts = await safeJson<Record<string, unknown>[]>(workoutsRes, [])
+          const prs = await safeJson<Record<string, unknown>[]>(prsRes, [])
+          const plans = await safeJson<Record<string, unknown>[]>(plansRes, [])
+          const checkIns = await safeJson<Record<string, unknown>[]>(checkInsRes, [])
 
           // Map DB exercises to store format
           const mappedExercises: Exercise[] = (exercises || []).map((e: Record<string, unknown>) => ({
@@ -430,7 +439,7 @@ export const useFitnessStore = create<FitnessStore>()(
             name: e.name as string,
             muscleGroup: e.muscleGroup as MuscleGroup,
             icon: (e.icon as string) || 'Dumbbell',
-            difficulty: (e.difficulty as string) || 'beginner',
+            difficulty: ((e.difficulty as string) || 'beginner') as Exercise['difficulty'],
             isCustom: !!e.isCustom,
           }))
 
@@ -453,12 +462,13 @@ export const useFitnessStore = create<FitnessStore>()(
           }))
 
           // Map training plans — flatten nested DB structure to store format
-          const activePlan = (plans || []).find((p: Record<string, unknown>) => p.isActive)
           interface DbExerciseRef { exercise: Record<string, unknown>; order: number }
           interface DbDay { day: string; isRest?: boolean; exercises: DbExerciseRef[] }
           interface DbPlan { id: string; name: string; isActive: boolean; durationWeeks?: number; startDate?: string | null; days: DbDay[] }
           const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-          const mappedPlans: TrainingPlan[] = (plans || []).map((p: DbPlan) => ({
+          const typedPlans = (plans || []) as unknown as DbPlan[]
+          const activePlan = typedPlans.find((p) => p.isActive)
+          const mappedPlans: TrainingPlan[] = typedPlans.map((p) => ({
             id: p.id,
             name: p.name,
             durationWeeks: p.durationWeeks ?? 0,
@@ -487,7 +497,7 @@ export const useFitnessStore = create<FitnessStore>()(
             workoutLogs: mappedLogs,
             personalRecords: mappedPRs,
             trainingPlans: mappedPlans,
-            activeTrainingPlanId: activePlan ? (activePlan as DbPlan).id : null,
+            activeTrainingPlanId: activePlan ? activePlan.id : null,
             checkIns: mappedCheckIns,
           })
         } catch {
